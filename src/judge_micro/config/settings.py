@@ -3,7 +3,6 @@
 這些變量可以在 .env.local 或 .env 文件中定義
 
 參數介紹：
-- container_count: 容器數量，默認為 3
 - container_cpu: 每個容器的 CPU 限制，默認為 0.5，這個功能是照 CPU 運行時間去限制的，算是比較細膩的方法
 - container_mem: 每個容器的內存限制，默認為 128m
 - docker_ssh_remote: 預設為 False，是否使用遠端 Docker SSH 連接
@@ -29,7 +28,6 @@ class Settings(BaseSettings):
     """
     Settings for the application, loaded from environment variables or a .env file.
     """
-    container_count: int = int(os.getenv("CONTAINER_COUNT", 3))
     container_cpu: float = float(os.getenv("CONTAINER_CPU", 0.5))
     container_mem: str = os.getenv("CONTAINER_MEM", "128m")
     

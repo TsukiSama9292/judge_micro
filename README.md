@@ -74,6 +74,12 @@
 - **C++ Language**: G++ with modern standards (C++11 to C++23)
 - **Extensible Framework**: Easy addition of new language containers
 
+### 4. Comprehensive Error Detection 🛡️
+- **Compilation Errors**: Automatic detection of syntax and type errors
+- **Runtime Errors**: Segmentation faults, exceptions, and crashes
+- **Logic Errors**: Output validation against expected results
+- **Resource Monitoring**: CPU time, memory usage, and execution metrics
+
 ## 🛠️ System Requirements
 
 - **Operating System**: Linux (Ubuntu/Debian recommended)
@@ -136,28 +142,73 @@ result = judge_micro.run_microservice(
 )
 
 print(f"Status: {result['status']}")
-print(f"Match: {result['match']}")
+if result['status'] == 'SUCCESS':
+    print(f"✅ Match: {result.get('match', True)}")
+    print(f"⏱️ Execution time: {result['time_ms']:.3f}ms")
+elif result['status'] == 'COMPILE_ERROR':
+    print(f"❌ Compilation failed: {result['stderr']}")
+elif result['status'] == 'RUNTIME_ERROR':
+    print(f"❌ Runtime error: {result['stderr']}")
+elif result['status'] == 'WRONG_ANSWER':
+    print(f"❌ Wrong answer - Expected: {result['expected']}, Got: {result['actual']}")
 ```
 
 ## 📊 Example Output
 
+### Successful Execution
 ```json
 {
   "status": "SUCCESS",
   "match": true,
-  "execution_time_ms": 1.234,
-  "cpu_time_ms": 0.987,
-  "memory_usage_mb": 2.1,
-  "results": {
-    "a": 6,
-    "b": 9
-  },
-  "expected": {
-    "a": 6,
-    "b": 9
-  },
-  "compiler_output": "",
-  "runtime_output": "Hello from C user code!\n"
+  "time_ms": 1.234,
+  "cpu_utime": 0.0012,
+  "cpu_stime": 0.0008,
+  "maxrss_mb": 2.1,
+  "compile_time_ms": 145.6,
+  "expected": {"a": 6, "b": 9},
+  "actual": {"a": 6, "b": 9},
+  "stdout": "Debug output from user code",
+  "stderr": ""
+}
+```
+
+### Compilation Error
+```json
+{
+  "status": "COMPILE_ERROR",
+  "error": "Compilation failed",
+  "stderr": "error: expected ';' before '}' token",
+  "exit_code": 1,
+  "compile_time_ms": 89.3
+}
+```
+
+### Runtime Error
+```json
+{
+  "status": "RUNTIME_ERROR",
+  "error": "Execution failed", 
+  "stderr": "Segmentation fault (core dumped)",
+  "exit_code": 139,
+  "time_ms": 23.1,
+  "compile_time_ms": 156.7
+}
+```
+
+### Wrong Answer
+```json
+{
+  "status": "WRONG_ANSWER",
+  "match": false,
+  "expected": {"a": 6, "b": 9},
+  "actual": {"a": 6, "b": 8},
+  "time_ms": 2.1,
+  "cpu_utime": 0.002,
+  "cpu_stime": 0.001,
+  "maxrss_mb": 1.3,
+  "compile_time_ms": 128.5,
+  "stdout": "Debug: Processing values...",
+  "stderr": ""
 }
 ```
 
@@ -196,6 +247,8 @@ os.environ['CONTAINER_COUNT'] = '5'      # Max containers
 - [C/C++ Usage Examples](https://github.com/TsukiSama9292/judge_micro/blob/main/examples/Judge_MicroService.ipynb)
 - [API Reference](docs/api.md)
 - [Configuration Guide](docs/configuration.md)
+- [Error Handling & Status Codes](docs/error_handling.md)
+- [Python SDK Guide](docs/python_sdk.md)
 - [Deployment Guide](docs/deployment.md)
 
 ## 🤝 Contributing
