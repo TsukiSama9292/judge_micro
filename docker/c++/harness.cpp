@@ -130,6 +130,7 @@ public:
         
         main_file << "// Auto-generated test main for C++ OJ Runner\n";
         main_file << "#include <iostream>\n";
+        main_file << "#include <fstream>\n";
         main_file << "#include <string>\n";
         main_file << "#include <vector>\n";
         main_file << "#include <algorithm>\n";
@@ -194,24 +195,27 @@ public:
             main_file << ");\n\n";
         }
         
-        // Output final values for verification
-        main_file << "        // Output final values for verification\n";
-        main_file << "        std::cout << \"RESULT_START\" << std::endl;\n";
+        // Write results to a file instead of stdout (let user code control stdout)
+        main_file << "        // Write results to a file for verification\n";
+        main_file << "        std::ofstream result_file(\"function_result.txt\");\n";
+        main_file << "        if (result_file.is_open()) {\n";
         if (params.is_array()) {
             for (size_t i = 0; i < params.size(); ++i) {
                 const auto& param = params[i];
                 const std::string& name = param["name"].get<std::string>();
                 const std::string& type = param["type"].get<std::string>();
-        main_file << "        std::cout << \"" << name << ":\" << " 
-                 << format_output(type, name) << " << std::endl;\n";
+                main_file << "            result_file << \"" << name << ":\" << " 
+                         << format_output(type, name) << " << std::endl;\n";
             }
         }
         if (return_type == "void") {
-            main_file << "        std::cout << \"return_value:void\" << std::endl;\n";
+            main_file << "            result_file << \"return_value:void\" << std::endl;\n";
         } else {
-            main_file << "        std::cout << \"return_value:\" << function_result << std::endl;\n";
+            main_file << "            result_file << \"return_value:\" << function_result << std::endl;\n";
         }
-        main_file << "        std::cout << \"RESULT_END\" << std::endl;\n";
+        main_file << "            result_file.close();\n";
+        main_file << "        }\n";
+        main_file << "        // No automatic stdout output - let user code control stdout completely\n";
         
         main_file << "    } catch (const std::exception& e) {\n";
         main_file << "        std::cerr << \"Runtime error: \" << e.what() << std::endl;\n";
@@ -268,21 +272,17 @@ private:
 
 class ResultAnalyzer {
 public:
-    static json parse_output(const std::string& output, const json& /* expected */) {
+    static json parse_output(const std::string& output __attribute__((unused)), const json& /* expected */) {
         json actual;
         
-        size_t start = output.find("RESULT_START");
-        size_t end = output.find("RESULT_END");
-        
-        if (start == std::string::npos || end == std::string::npos) {
-            return actual;
+        // Read results from function_result.txt instead of stdout
+        std::ifstream result_file("function_result.txt");
+        if (!result_file.is_open()) {
+            return actual; // Return empty object if no result file
         }
         
-        std::string result_section = output.substr(start + 12, end - start - 12);
-        std::istringstream iss(result_section);
         std::string line;
-        
-        while (std::getline(iss, line)) {
+        while (std::getline(result_file, line)) {
             size_t colon = line.find(':');
             if (colon != std::string::npos) {
                 std::string key = line.substr(0, colon);
@@ -327,6 +327,7 @@ public:
                 }
             }
         }
+        result_file.close();
         
         return actual;
     }

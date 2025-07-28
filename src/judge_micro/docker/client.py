@@ -17,3 +17,5 @@ class DockerEngine():
 
     def get_client(self):
         return self.docker_client
+
+default_docker_client = DockerEngine().get_client()

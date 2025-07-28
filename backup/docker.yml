@@ -28,9 +28,9 @@ jobs:
 
       - name: Build Docker image
         run: |
-          docker build -f docker/main/Dockerfile -t ${{ secrets.DOCKER_USERNAME }}/judger-micro:latest -t ${{ secrets.DOCKER_USERNAME }}/judger-micro:${{ steps.version.outputs.tag }} .
+          docker build -f docker/main/Dockerfile -t ${{ secrets.DOCKER_USERNAME }}/judge_micro:latest -t ${{ secrets.DOCKER_USERNAME }}/judge_micro:${{ steps.version.outputs.tag }} .
 
       - name: Push Docker image
         run: |
-          docker push ${{ secrets.DOCKER_USERNAME }}/judger-micro:latest
-          docker push ${{ secrets.DOCKER_USERNAME }}/judger-micro:${{ steps.version.outputs.tag }}
+          docker push ${{ secrets.DOCKER_USERNAME }}/judge_micro:latest
+          docker push ${{ secrets.DOCKER_USERNAME }}/judge_micro:${{ steps.version.outputs.tag }}

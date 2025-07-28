@@ -8,19 +8,24 @@ from pathlib import Path
 from typing import Dict, Any, Optional, List, Union
 import docker
 from docker.errors import DockerException
+from judge_micro.docker.client import default_docker_client
 
-class OJMicroserviceEfficient:
-    """高效率真微服務版本 - 每次創建新容器並立即銷毀"""
+class JudgeMicroservice:
+    """每次創建新容器並立即銷毀"""
     
     DOCKER_IMAGES = {
-        'c': 'tsukisama9292/judger-runner:c',
-        'cpp': 'tsukisama9292/judger-runner:c_plus_plus'
+        'c': 'tsukisama9292/judge_micro:c',
+        'cpp': 'tsukisama9292/judge_micro:c_plus_plus'
     }
     
-    def __init__(self):
+    def __init__(self, docker_client=None):
         """初始化 Docker 客戶端"""
         try:
-            self.docker_client = docker.from_env()
+            if docker_client:
+                self.docker_client = docker_client
+            else:
+                # 使用預設的 Docker 客戶端
+                self.docker_client = default_docker_client
             print("🚀 高效率微服務已就緒")
         except DockerException as e:
             print(f"❌ Docker 客戶端初始化失敗: {e}")
@@ -70,8 +75,28 @@ class OJMicroserviceEfficient:
             # 創建 tar 檔案包含所有文件
             tar_data = self._create_file_tar(user_code, config, user_filename)
             
-            # 3. 一次性上傳所有文件
+            # 3. 一次性上傳並解壓縮所有文件（會自動覆蓋同名文件）
             container.put_archive('/app', tar_data)
+            
+            # 驗證文件是否正確上傳和覆蓋（調試）
+            # if show_logs:
+            #     # 檢查上傳前的文件內容
+            #     pre_check = container.exec_run(f"cat /app/{user_filename} 2>/dev/null || echo 'FILE_NOT_EXISTS'", workdir='/app')
+            #     print(f"📄 上傳前 {user_filename} 內容預覽:")
+            #     print(f"   {pre_check.output.decode('utf-8')[:100]}...")
+                
+            #     # 檢查文件是否存在和時間戳
+            #     check_result = container.exec_run(f"ls -la /app/{user_filename} /app/config.json", workdir='/app')
+            #     if check_result.exit_code == 0:
+            #         print(f"✅ 文件上傳成功: {user_filename}, config.json")
+            #         print(f"📊 文件詳情:\n{check_result.output.decode('utf-8')}")
+                    
+            #         # 驗證文件內容是否正確
+            #         content_check = container.exec_run(f"head -5 /app/{user_filename}", workdir='/app')
+            #         print(f"📝 {user_filename} 文件內容前5行:")
+            #         print(f"   {content_check.output.decode('utf-8')}")
+            #     else:
+            #         print(f"⚠️ 文件上傳可能有問題")
             
             # 4. 執行測試（靜默模式提升速度）
             if show_logs:
@@ -123,9 +148,10 @@ class OJMicroserviceEfficient:
                         print(f"⚠️ 清理容器時出錯: {e}")
     
     def _create_file_tar(self, user_code: str, config: Dict[str, Any], user_filename: str):
-        """高效創建包含所有文件的 tar"""
+        """高效創建包含所有文件的 tar，確保正確覆蓋同名文件"""
         import tarfile
         import io
+        import time
         
         tar_stream = io.BytesIO()
         with tarfile.open(fileobj=tar_stream, mode='w') as tar:
@@ -133,12 +159,18 @@ class OJMicroserviceEfficient:
             user_data = user_code.encode('utf-8')
             user_info = tarfile.TarInfo(name=user_filename)
             user_info.size = len(user_data)
+            user_info.mode = 0o644  # 設置文件權限為 rw-r--r--
+            user_info.mtime = time.time()  # 設置當前時間戳
+            user_info.type = tarfile.REGTYPE  # 明確指定為普通文件
             tar.addfile(user_info, io.BytesIO(user_data))
             
             # 添加配置文件
             config_data = json.dumps(config, indent=2).encode('utf-8')
             config_info = tarfile.TarInfo(name='config.json')
             config_info.size = len(config_data)
+            config_info.mode = 0o644  # 設置文件權限為 rw-r--r--
+            config_info.mtime = time.time()  # 設置當前時間戳
+            config_info.type = tarfile.REGTYPE  # 明確指定為普通文件
             tar.addfile(config_info, io.BytesIO(config_data))
         
         tar_stream.seek(0)
@@ -217,4 +249,4 @@ class OJMicroserviceEfficient:
 
 # 創建高效率微服務實例
 print("🚀 創建高效率微服務實例...")
-oj_efficient = OJMicroserviceEfficient()
+judge_micro = JudgeMicroservice()

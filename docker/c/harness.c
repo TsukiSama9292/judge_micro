@@ -56,58 +56,47 @@ static resource_stats_t get_resource_stats(struct rusage *start, struct rusage *
     return stats;
 }
 
-static cJSON* parse_output_results(const char* output, cJSON* expected __attribute__((unused))) {
+static cJSON* parse_output_results(const char* output __attribute__((unused)), cJSON* expected __attribute__((unused))) {
     cJSON* actual = cJSON_CreateObject();
     
-    // Find RESULT_START and RESULT_END markers
-    const char* start_marker = strstr(output, "RESULT_START");
-    const char* end_marker = strstr(output, "RESULT_END");
+    // Read results from function_result.txt instead of stdout
+    FILE *result_file = fopen("function_result.txt", "r");
+    if (!result_file) {
+        return actual; // Return empty object if no result file
+    }
     
-    if (start_marker && end_marker && start_marker < end_marker) {
-        // Parse the section between markers
-        const char* content_start = start_marker + strlen("RESULT_START");
+    char line[256];
+    while (fgets(line, sizeof(line), result_file)) {
+        // Remove newline
+        line[strcspn(line, "\n")] = 0;
         
-        // Process line by line
-        char* content = strndup(content_start, end_marker - content_start);
-        char* line = strtok(content, "\n");
-        
-        while (line != NULL) {
-            // Skip empty lines
-            while (*line == ' ' || *line == '\t' || *line == '\r') line++;
-            if (*line == '\0') {
-                line = strtok(NULL, "\n");
-                continue;
-            }
+        // Parse key:value pairs
+        char* colon = strchr(line, ':');
+        if (colon) {
+            *colon = '\0';
+            char* key = line;
+            char* value = colon + 1;
             
-            // Parse key:value pairs
-            char* colon = strchr(line, ':');
-            if (colon) {
-                *colon = '\0';
-                char* key = line;
-                char* value = colon + 1;
-                
-                // Trim whitespace
-                while (*key == ' ' || *key == '\t') key++;
-                while (*value == ' ' || *value == '\t') value++;
-                
-                // Try to parse as number
-                char* endptr;
-                long long_val = strtol(value, &endptr, 10);
+            // Trim whitespace
+            while (*key == ' ' || *key == '\t') key++;
+            while (*value == ' ' || *value == '\t') value++;
+            
+            // Try to parse as number
+            char* endptr;
+            long long_val = strtol(value, &endptr, 10);
+            if (*endptr == '\0') {
+                cJSON_AddNumberToObject(actual, key, long_val);
+            } else {
+                double double_val = strtod(value, &endptr);
                 if (*endptr == '\0') {
-                    cJSON_AddNumberToObject(actual, key, long_val);
+                    cJSON_AddNumberToObject(actual, key, double_val);
                 } else {
-                    double double_val = strtod(value, &endptr);
-                    if (*endptr == '\0') {
-                        cJSON_AddNumberToObject(actual, key, double_val);
-                    } else {
-                        cJSON_AddStringToObject(actual, key, value);
-                    }
+                    cJSON_AddStringToObject(actual, key, value);
                 }
             }
-            line = strtok(NULL, "\n");
         }
-        free(content);
     }
+    fclose(result_file);
     
     return actual;
 }
@@ -215,9 +204,7 @@ static void generate_test_main(cJSON *cfg) {
     if (cJSON_IsArray(params)) {
         int param_count = cJSON_GetArraySize(params);
         
-        // Print input values
-        fprintf(mf, "    printf(\"Hello from C user code!\\n\");\n");
-        fprintf(mf, "    printf(\"Input: \");\n");
+        // Initialize parameters with input values (no debug output)
         for (int i = 0; i < param_count; i++) {
             cJSON *param = cJSON_GetArrayItem(params, i);
             const char *name = cJSON_GetObjectItem(param, "name")->valuestring;
@@ -228,10 +215,7 @@ static void generate_test_main(cJSON *cfg) {
             const char *type = param_type ? cJSON_GetStringValue(param_type) : "int";
             
             fprintf(mf, "    %s %s = %d;\n", type, name, input_value);
-            if (i > 0) fprintf(mf, "    printf(\", \");\n");
-            fprintf(mf, "    printf(\"%s=%%d\", %s);\n", name, name);
         }
-        fprintf(mf, "    printf(\"\\n\");\n\n");
         
         // Call solve function with proper return type
         cJSON *function_type = cJSON_GetObjectItem(cfg, "function_type");
@@ -250,29 +234,23 @@ static void generate_test_main(cJSON *cfg) {
         }
         fprintf(mf, ");\n\n");
         
-        // Print output values
-        fprintf(mf, "    printf(\"Output: \");\n");
+        // Create a result file with the actual values (not stdout)
+        fprintf(mf, "    FILE *result_file = fopen(\"function_result.txt\", \"w\");\n");
+        fprintf(mf, "    if (result_file) {\n");
         for (int i = 0; i < param_count; i++) {
             cJSON *param = cJSON_GetArrayItem(params, i);
             const char *name = cJSON_GetObjectItem(param, "name")->valuestring;
-            if (i > 0) fprintf(mf, "    printf(\", \");\n");
-            fprintf(mf, "    printf(\"%s=%%d\", %s);\n", name, name);
-        }
-        fprintf(mf, "    printf(\"\\n\");\n\n");
-        
-        // Output structured results
-        fprintf(mf, "    printf(\"RESULT_START\\n\");\n");
-        for (int i = 0; i < param_count; i++) {
-            cJSON *param = cJSON_GetArrayItem(params, i);
-            const char *name = cJSON_GetObjectItem(param, "name")->valuestring;
-            fprintf(mf, "    printf(\"%s:%%d\\n\", %s);\n", name, name);
+            fprintf(mf, "        fprintf(result_file, \"%s:%%d\\n\", %s);\n", name, name);
         }
         
-        // Only print return value if function is not void
+        // Only write return value if function is not void
         if (strcmp(return_type, "void") != 0) {
-            fprintf(mf, "    printf(\"return_value:%%d\\n\", function_result);\n");
+            fprintf(mf, "        fprintf(result_file, \"return_value:%%d\\n\", function_result);\n");
         }
-        fprintf(mf, "    printf(\"RESULT_END\\n\");\n");
+        fprintf(mf, "        fclose(result_file);\n");
+        fprintf(mf, "    }\n");
+        
+        // No automatic stdout output - let user code control stdout completely
     }
     
     fprintf(mf, "    return 0;\n}\n");
