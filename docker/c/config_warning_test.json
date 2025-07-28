@@ -1,0 +1,9 @@
+{
+  "solve_params": [
+    {"name": "result", "type": "int", "input_value": 0}
+  ],
+  "expected": {"result": 100},
+  "function_type": "int",
+  "c_standard": "c99",
+  "compiler_flags": "-Wall -Wextra -O2 -Wno-array-bounds -Wno-error=implicit-function-declaration"
+}

@@ -1,0 +1,13 @@
+{
+  "solve_params": [
+    {"name": "number", "type": "int", "input_value": 7},
+    {"name": "result", "type": "int", "input_value": 0}
+  ],
+  "expected": {
+    "number": 7,
+    "result": 49
+  },
+  "function_type": "int",
+  "cpp_standard": "c++20",
+  "compiler_flags": "-Wall -Wextra -O2 -fconcepts"
+}

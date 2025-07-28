@@ -1,0 +1,15 @@
+{
+  "solve_params": [
+    {"name": "num1", "type": "int", "input_value": 12},
+    {"name": "num2", "type": "int", "input_value": 18},
+    {"name": "gcd_result", "type": "int", "input_value": 0},
+    {"name": "lcm_result", "type": "int", "input_value": 0}
+  ],
+  "expected": {
+    "num1": 12,
+    "num2": 18,
+    "gcd_result": 6,
+    "lcm_result": 36
+  },
+  "function_type": "int"
+}

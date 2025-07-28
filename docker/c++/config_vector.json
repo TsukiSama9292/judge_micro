@@ -1,0 +1,8 @@
+{
+  "solve_params": [
+    {"name": "numbers", "type": "vector<int>", "input_value": [1, 2, 3, 4, 5]},
+    {"name": "sum", "type": "int", "input_value": 0}
+  ],
+  "expected": {"numbers": [2, 4, 6, 8, 10], "sum": 30},
+  "function_type": "bool"
+}

@@ -1,0 +1,10 @@
+{
+  "solve_params": [
+    {"name": "n", "type": "int", "input_value": 5},
+    {"name": "result", "type": "long long", "input_value": 1}
+  ],
+  "expected": {"n": 5, "result": 120},
+  "function_type": "void",
+  "timeout_ms": 1000,
+  "memory_limit_mb": 64
+}

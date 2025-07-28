@@ -1,0 +1,8 @@
+{
+  "solve_params": [
+    {"name": "text", "type": "string", "input_value": "hello"},
+    {"name": "length", "type": "int", "input_value": 0}
+  ],
+  "expected": {"text": "HELLO", "length": 5},
+  "function_type": "void"
+}

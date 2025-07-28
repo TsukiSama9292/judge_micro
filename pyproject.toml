@@ -1,0 +1,58 @@
+[build-system]
+requires = ["setuptools>=61.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "judge_micro"
+version = "0.0.0.dev0"
+requires-python = ">3.8, <3.14"
+description = ""
+readme = "README.md"
+license = "Apache-2.0"
+license-files = ["LICENSE"]
+
+authors = [
+  { name = "Xuan‑You Lin", email = "a0985821880@gmail.com" }
+]
+
+maintainers = [
+  { name = "Xuan‑You Lin", email = "a0985821880@gmail.com" }
+]
+
+dependencies = [
+    "setuptools",
+    "ipykernel",
+    "ipywidgets",
+    "nest_asyncio",
+    "jupyterlab_widgets",
+    "pydantic",
+    "python-dotenv",
+    "docker",
+    "paramiko",
+]
+
+[tool.setuptools]
+package-dir = { "" = "src" }
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[project.optional-dependencies]
+dev = [
+    "pytest",
+    "pytest-cov"
+]
+
+[tool.pytest.ini_options]
+minversion = "7.0"
+addopts = "-ra -q"
+testpaths = [
+    "tests"
+]
+python_files = "test_*.py"
+
+[[tool.uv.index]]
+name = "testpypi"
+url = "https://test.pypi.org/simple/"
+publish-url = "https://test.pypi.org/legacy/"
+explicit = true
