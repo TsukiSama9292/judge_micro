@@ -245,22 +245,12 @@ os.environ['CONTAINER_COUNT'] = '5'      # Max containers
 ## 📚 Documentation
 
 - [C/C++ Usage Examples](https://github.com/TsukiSama9292/judge_micro/blob/main/examples/Judge_MicroService.ipynb)
-- [API Reference](docs/api.md)
-- [Configuration Guide](docs/configuration.md)
-- [Error Handling & Status Codes](docs/error_handling.md)
-- [Python SDK Guide](docs/python_sdk.md)
-- [Deployment Guide](docs/deployment.md)
-
-## 🤝 Contributing
-
-We welcome contributions! Please see our [Contributing Guidelines](CONTRIBUTING.md) for details.
+- [API Reference](https://github.com/TsukiSama9292/judge_micro/blob/main/docs/api.md)
+- [Configuration Guide](https://github.com/TsukiSama9292/judge_micro/blob/main/docs/configuration.md)
+- [Error Handling & Status Codes](https://github.com/TsukiSama9292/judge_micro/blob/main/docs/error_handling.md)
+- [Python SDK Guide](https://github.com/TsukiSama9292/judge_micro/blob/main/docs/python_sdk.md)
+- [Deployment Guide](https://github.com/TsukiSama9292/judge_micro/blob/main/docs/deployment.md)
 
 ## 📄 License
 
-This project is licensed under the Apache License 2.0 - see the [LICENSE](LICENSE) file for details.
-
-## 🎉 Acknowledgments
-
-- Built with modern DevOps practices
-- Inspired by competitive programming judge systems
-- Powered by Docker containerization technology
+This project is licensed under the Apache License 2.0 - see the [LICENSE](https://github.com/TsukiSama9292/judge_micro/blob/main/LICENSE) file for details.
