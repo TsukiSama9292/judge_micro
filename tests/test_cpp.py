@@ -30,7 +30,7 @@ int solve(int &a, int &b) {
         config=config,
         show_logs=True
     )
-
+    print("C++ 測試結果:\n", result_cpp_efficient)
     assert result_cpp_efficient.get('status').lower() == 'success'
     assert result_cpp_efficient.get('match') == True
 

@@ -30,7 +30,7 @@ int solve(int *a, int *b) {
         config=config,
         show_logs=True
     )
-
+    print("C 測試結果:\n", result_c_efficient)
     assert result_c_efficient.get('status').lower() == 'success'
     assert result_c_efficient.get('match') == True
 
