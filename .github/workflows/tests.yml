@@ -45,8 +45,8 @@ jobs:
         
       - name: Docker Image Pull
         run: |
-          docker pull ghcr.io/tsukisama9292/judge_micro:c
-          docker pull ghcr.io/tsukisama9292/judge_micro:c_plus_plus
+          docker pull tsukisama9292/judge_micro:c
+          docker pull tsukisama9292/judge_micro:c_plus_plus
 
       - name: Run tests
         run: uv run python -X utf8 -m pytest -s
