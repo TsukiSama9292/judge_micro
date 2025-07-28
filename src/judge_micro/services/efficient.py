@@ -11,28 +11,37 @@ from docker.errors import DockerException
 from judge_micro.docker.client import default_docker_client
 from judge_micro.config.settings import setting
 class JudgeMicroservice:
-    """每次創建新容器並立即銷毀"""
     
     DOCKER_IMAGES = {
         'c': 'tsukisama9292/judge_micro:c',
         'cpp': 'tsukisama9292/judge_micro:c_plus_plus'
     }
     
-    def __init__(self, docker_client=None):
-        """初始化 Docker 客戶端"""
+    def __init__(self, docker_client=None, continue_on_timeout: bool = None):
+        """Initialize Docker client
+        
+        Args:
+            docker_client: Docker client instance
+            continue_on_timeout: If True, continue execution even after timeout; 
+                               If False, immediately stop container on timeout.
+                               If None, use setting from configuration file.
+        """
         try:
             if docker_client:
                 self.docker_client = docker_client
             else:
-                # 使用預設的 Docker 客戶端
+                # Use default Docker client
                 self.docker_client = default_docker_client
-            print("🚀 高效率微服務已就緒")
+            
+            # Use provided value or default from settings
+            self.continue_on_timeout = continue_on_timeout if continue_on_timeout is not None else setting.continue_on_timeout
+            print("🚀 Efficient microservice is ready")
         except DockerException as e:
-            print(f"❌ Docker 客戶端初始化失敗: {e}")
+            print(f"❌ Docker client initialization failed: {e}")
             raise
     
     def __del__(self):
-        """清理資源"""
+        """Clean up resources"""
         if hasattr(self, 'docker_client'):
             self.docker_client.close()
     
@@ -40,73 +49,184 @@ class JudgeMicroservice:
                         language: str, 
                         user_code: str, 
                         config: Dict[str, Any],
-                        show_logs: bool = False) -> Dict[str, Any]:
+                        show_logs: bool = False,
+                        compile_timeout: int = None,
+                        execution_timeout: int = None) -> Dict[str, Any]:
         """
-        高效率微服務執行 - 創建->執行->銷毀一氣呵成
+        Efficient microservice execution - Create->Execute->Destroy in one go
         
         Args:
-            language: 'c' 或 'cpp'
-            user_code: 用戶代碼
-            config: 測試配置
-            show_logs: 是否顯示詳細日誌
+            language: 'c' or 'cpp'
+            user_code: User's code
+            config: Test configuration
+            show_logs: Whether to show detailed logs
+            compile_timeout: Maximum compilation time in seconds (uses setting.compile_timeout if None)
+            execution_timeout: Maximum execution time in seconds (uses setting.container_timeout if None)
         """
         if language not in self.DOCKER_IMAGES:
-            raise ValueError(f"不支援的語言: {language}")
+            raise ValueError(f"Unsupported language: {language}")
         
+        # Use provided timeouts or defaults from settings
+        compile_timeout_val = compile_timeout if compile_timeout is not None else getattr(setting, 'compile_timeout', 30)  # Default 30s for compilation
+        execution_timeout_val = execution_timeout if execution_timeout is not None else setting.container_timeout
         image_name = self.DOCKER_IMAGES[language]
         container = None
         start_time = time.time()
         
         try:
-            # 1. 快速創建容器（不等待完全啟動）
+            # 1. Quickly create container (don't wait for full startup)
             if show_logs:
-                print(f"🏗️ 創建 {language} 微服務容器...")
+                print(f"🏗️ Creating {language} microservice container...")
             
             container = self.docker_client.containers.create(
                 image_name,
-                cpu_quota=int(100000* setting.container_cpu),  # CPU 限制
-                mem_limit=setting.container_mem,  # 內存限制
-                privileged=False,  # 不需要特權模式
-                network_disabled=True,  # 禁用網絡
+                cpu_quota=int(100000* setting.container_cpu),  # CPU limit
+                mem_limit=setting.container_mem,  # Memory limit
+                privileged=False,  # No privileged mode needed
+                network_disabled=True,  # Disable network
                 command="sleep infinity",
                 detach=True
             )
             container.start()
             
-            # 2. 準備並上傳文件
+            # 2. Prepare and upload files
             user_filename = "user.c" if language == 'c' else "user.cpp"
             
-            # 創建 tar 檔案包含所有文件
+            # Create tar archive containing all files
             tar_data = self._create_file_tar(user_code, config, user_filename)
             
-            # 3. 一次性上傳並解壓縮所有文件（會自動覆蓋同名文件）
+            # 3. Upload and extract all files at once (automatically overwrites same-name files)
             container.put_archive('/app', tar_data)
             
-            # 4. 執行測試（靜默模式提升速度）
+            # 4. First compile the code (with compilation timeout constraint)
             if show_logs:
-                print(f"⚙️ 執行測試...")
+                print(f"🔨 Compiling code (timeout: {compile_timeout_val}s)...")
             
-            exec_result = container.exec_run(
-                "bash -c 'make clean >/dev/null 2>&1 && make build >/dev/null 2>&1 && make test >/dev/null 2>&1'",
-                workdir='/app'
-            )
+            compile_start_time = time.time()
             
-            # 5. 立即獲取結果
+            try:
+                compile_result = container.exec_run(
+                    f"bash -c 'timeout {compile_timeout_val} bash -c \"make clean >/dev/null 2>&1 && make build >/dev/null 2>&1\"'",
+                    workdir='/app'
+                )
+                
+                compile_execution_time = time.time() - compile_start_time
+                
+                # Check if compilation exceeded timeout
+                if compile_execution_time > compile_timeout_val:
+                    if show_logs:
+                        print(f"⏰ Compilation timeout ({compile_timeout_val}s exceeded)...")
+                    container.stop(timeout=1)
+                    return {
+                        "status": "COMPILE_TIMEOUT",
+                        "message": f"Compilation exceeded timeout limit of {compile_timeout_val} seconds",
+                        "execution_time": time.time() - start_time,
+                        "compile_execution_time": compile_execution_time
+                    }
+                
+                if compile_result.exit_code != 0:
+                    # Check if it's a timeout exit code (124 from timeout command)
+                    if compile_result.exit_code == 124:
+                        return {
+                            "status": "COMPILE_TIMEOUT",
+                            "message": f"Compilation exceeded timeout limit of {compile_timeout_val} seconds",
+                            "execution_time": time.time() - start_time,
+                            "compile_execution_time": compile_execution_time
+                        }
+                    else:
+                        return {
+                            "status": "COMPILE_ERROR",
+                            "message": "Compilation failed",
+                            "compile_output": compile_result.output.decode('utf-8', errors='ignore'),
+                            "execution_time": time.time() - start_time,
+                            "compile_execution_time": compile_execution_time
+                        }
+                        
+            except Exception as compile_error:
+                return {
+                    "status": "COMPILE_ERROR",
+                    "message": f"Compilation error: {compile_error}",
+                    "execution_time": time.time() - start_time,
+                    "compile_execution_time": time.time() - compile_start_time
+                }
+            
+            # 5. Now run the test with execution timeout constraint
+            if show_logs:
+                print(f"⚙️ Running test (timeout: {execution_timeout_val}s)...")
+            
+            test_start_time = time.time()
+            
+            # Check if we should handle timeout
+            if self.continue_on_timeout:
+                # Execute without timeout handling - let it complete
+                exec_result = container.exec_run(
+                    "bash -c 'make test >/dev/null 2>&1'",
+                    workdir='/app'
+                )
+            else:
+                # Execute with timeout - stop container if it exceeds timeout
+                try:
+                    exec_result = container.exec_run(
+                        "bash -c 'timeout {execution_timeout_val} make test >/dev/null 2>&1'".format(execution_timeout_val=execution_timeout_val),
+                        workdir='/app'
+                    )
+                    
+                    # Check if execution time exceeded timeout
+                    test_execution_time = time.time() - test_start_time
+                    if test_execution_time > execution_timeout_val:
+                        if show_logs:
+                            print(f"⏰ Test execution timeout ({execution_timeout_val}s exceeded), stopping container...")
+                        container.stop(timeout=1)
+                        return {
+                            "status": "TIMEOUT",
+                            "message": f"Test execution exceeded timeout limit of {execution_timeout_val} seconds",
+                            "execution_time": time.time() - start_time,
+                            "test_execution_time": test_execution_time,
+                            "compile_execution_time": time.time() - compile_start_time
+                        }
+                    
+                    # Check if it's a timeout exit code (124 from timeout command)
+                    if exec_result.exit_code == 124:
+                        return {
+                            "status": "TIMEOUT",
+                            "message": f"Test execution exceeded timeout limit of {execution_timeout_val} seconds",
+                            "execution_time": time.time() - start_time,
+                            "test_execution_time": test_execution_time,
+                            "compile_execution_time": time.time() - compile_start_time
+                        }
+                        
+                except Exception as timeout_error:
+                    return {
+                        "status": "TIMEOUT_ERROR",
+                        "message": f"Timeout handling error: {timeout_error}",
+                        "execution_time": time.time() - start_time,
+                        "test_execution_time": time.time() - test_start_time,
+                        "compile_execution_time": time.time() - compile_start_time
+                    }
+            
+            # 6. Immediately get results
             try:
                 archive, _ = container.get_archive('/app/result.json')
                 result_content = self._extract_result_from_tar(archive)
                 result_json = json.loads(result_content)
                 
                 elapsed = time.time() - start_time
+                test_elapsed = time.time() - test_start_time
+                compile_elapsed = time.time() - compile_start_time
                 if show_logs:
-                    print(f"⚡ 微服務完成 ({elapsed:.3f}s)")
+                    print(f"⚡ Microservice completed (total: {elapsed:.3f}s, compile: {compile_elapsed:.3f}s, test: {test_elapsed:.3f}s)")
+                
+                # Add timing information to result
+                result_json["total_execution_time"] = elapsed
+                result_json["test_execution_time"] = test_elapsed
+                result_json["compile_execution_time"] = compile_elapsed
                 
                 return result_json
                 
             except Exception as e:
                 return {
                     "status": "ERROR",
-                    "message": f"無法讀取結果: {e}",
+                    "message": f"Unable to read result: {e}",
                     "exit_code": exec_result.exit_code,
                     "execution_time": time.time() - start_time
                 }
@@ -118,50 +238,49 @@ class JudgeMicroservice:
                 "execution_time": time.time() - start_time
             }
         finally:
-            # 6. 立即清理容器（微服務核心特性）
+            # 7. Immediately clean up container (core microservice feature)
             if container:
                 try:
                     if show_logs:
-                        print(f"🗑️ 銷毀容器...")
+                        print(f"🗑️ Destroying container...")
                     container.stop(timeout=1)
                     container.remove()
                     if show_logs:
-                        print(f"✅ 容器已銷毀")
+                        print(f"✅ Container destroyed")
                 except Exception as e:
                     if show_logs:
-                        print(f"⚠️ 清理容器時出錯: {e}")
+                        print(f"⚠️ Error during container cleanup: {e}")
     
     def _create_file_tar(self, user_code: str, config: Dict[str, Any], user_filename: str):
-        """高效創建包含所有文件的 tar，確保正確覆蓋同名文件"""
+        """Efficiently create tar containing all files, ensuring proper overwrite of same-name files"""
         import tarfile
         import io
         import time
         
         tar_stream = io.BytesIO()
         with tarfile.open(fileobj=tar_stream, mode='w') as tar:
-            # 添加用戶代碼文件
+            # Add user code file
             user_data = user_code.encode('utf-8')
             user_info = tarfile.TarInfo(name=user_filename)
             user_info.size = len(user_data)
-            user_info.mode = 0o644  # 設置文件權限為 rw-r--r--
-            user_info.mtime = time.time()  # 設置當前時間戳
-            user_info.type = tarfile.REGTYPE  # 明確指定為普通文件
+            user_info.mode = 0o644  # Set file permissions to rw-r--r--
+            user_info.mtime = time.time()  # Set current timestamp
+            user_info.type = tarfile.REGTYPE  # Explicitly specify as regular file
             tar.addfile(user_info, io.BytesIO(user_data))
             
-            # 添加配置文件
+            # Add configuration file
             config_data = json.dumps(config, indent=2).encode('utf-8')
             config_info = tarfile.TarInfo(name='config.json')
             config_info.size = len(config_data)
-            config_info.mode = 0o644  # 設置文件權限為 rw-r--r--
-            config_info.mtime = time.time()  # 設置當前時間戳
-            config_info.type = tarfile.REGTYPE  # 明確指定為普通文件
+            config_info.mode = 0o644  # Set file permissions to rw-r--r--
+            config_info.mtime = time.time()  # Set current timestamp
+            config_info.type = tarfile.REGTYPE  # Explicitly specify as regular file
             tar.addfile(config_info, io.BytesIO(config_data))
         
         tar_stream.seek(0)
         return tar_stream.getvalue()
     
     def _extract_result_from_tar(self, archive):
-        """高效提取結果文件"""
         import tarfile
         import io
         
@@ -176,7 +295,7 @@ class JudgeMicroservice:
                     f = tar.extractfile(member)
                     if f:
                         return f.read().decode('utf-8')
-        raise Exception("無法找到結果文件")
+        raise Exception("Unable to find result file")
     
     def test_with_version(self,
                          language: str,
@@ -184,11 +303,23 @@ class JudgeMicroservice:
                          solve_params: List[Dict[str, Any]],
                          expected: Dict[str, Any],
                          standard: Optional[str] = None,
-                         show_logs: bool = False) -> Dict[str, Any]:
+                         show_logs: bool = False,
+                         compile_timeout: int = None,
+                         execution_timeout: int = None) -> Dict[str, Any]:
         """
-        使用指定版本執行微服務測試
+        Execute microservice test using specified version
+        
+        Args:
+            language: Programming language ('c' or 'cpp')
+            user_code: User's source code
+            solve_params: Parameters for solving
+            expected: Expected results
+            standard: Language standard (e.g., 'c11', 'cpp20')
+            show_logs: Whether to show execution logs
+            compile_timeout: Maximum compilation time in seconds (uses setting.compile_timeout if None)
+            execution_timeout: Maximum execution time in seconds (uses setting.container_timeout if None)
         """
-        # 創建配置
+        # Create configuration
         config = {
             "solve_params": solve_params,
             "expected": expected,
@@ -203,34 +334,34 @@ class JudgeMicroservice:
             config["compiler_flags"] = "-Wall -Wextra -O2"
         
         if show_logs:
-            print(f"🔧 配置: {language}" + (f" ({standard})" if standard else ""))
+            print(f"🔧 Configuration: {language}" + (f" ({standard})" if standard else ""))
         
-        return self.run_microservice(language, user_code, config, show_logs)
+        return self.run_microservice(language, user_code, config, show_logs, compile_timeout, execution_timeout)
     
     def batch_test(self, tests: List[Dict[str, Any]], show_progress: bool = True) -> List[Dict[str, Any]]:
         """
-        批量執行微服務測試
+        Execute batch microservice tests
         
         Args:
-            tests: 測試列表，每個包含 language, user_code, solve_params, expected 等
-            show_progress: 是否顯示進度
+            tests: List of tests, each containing language, user_code, solve_params, expected, etc.
+            show_progress: Whether to show progress
         """
         results = []
         total = len(tests)
         
         for i, test in enumerate(tests, 1):
             if show_progress:
-                print(f"📊 執行測試 {i}/{total} ({test.get('language', 'unknown')})")
+                print(f"📊 Executing test {i}/{total} ({test.get('language', 'unknown')})")
             
             result = self.test_with_version(**test)
             results.append(result)
             
             if show_progress:
                 status = "✅" if result.get('status') == 'SUCCESS' else "❌"
-                print(f"{status} 測試 {i} 完成")
+                print(f"{status} Test {i} completed")
         
         return results
 
-# 創建高效率微服務實例
-print("🚀 創建高效率微服務實例...")
+# Create efficient microservice instance
+print("🚀 Creating efficient microservice instance...")
 judge_micro = JudgeMicroservice()

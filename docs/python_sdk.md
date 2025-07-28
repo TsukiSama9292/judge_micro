@@ -42,6 +42,8 @@ touch .env.local
 # .env.local
 CONTAINER_CPU=1.0
 CONTAINER_MEM=512m
+CONTAINER_TIMEOUT=30
+COMPILE_TIMEOUT=30
 DOCKER_SSH_REMOTE=false
 ```
 
@@ -83,13 +85,32 @@ config = {
 # Execute evaluation
 result = judge.run_microservice('c', user_code, config)
 
+# Execute with custom timeouts
+result = judge.run_microservice(
+    'c', 
+    user_code, 
+    config,
+    compile_timeout=20,     # Max 20 seconds for compilation
+    execution_timeout=10    # Max 10 seconds for execution
+)
+
 # Check results
 if result['status'] == 'SUCCESS':
-    print(f"✅ Test passed! Execution time: {result['time_ms']:.3f}ms")
+    print(f"✅ Test passed! Execution time: {result.get('test_execution_time', 0):.3f}s")
+    print(f"📊 Compilation time: {result.get('compile_execution_time', 0):.3f}s")
+    print(f"📊 Total time: {result.get('total_execution_time', 0):.3f}s")
     if result.get('match', True):
         print("✅ Output matches expected values")
     else:
         print("❌ Output doesn't match expected values")
+elif result['status'] == 'COMPILE_TIMEOUT':
+    print(f"⏰ Compilation timeout: {result.get('message', 'Unknown error')}")
+    print(f"📊 Compilation time: {result.get('compile_execution_time', 0):.3f}s")
+elif result['status'] == 'TIMEOUT':
+    print(f"⏰ Execution timeout: {result.get('message', 'Unknown error')}")
+    print(f"📊 Test execution time: {result.get('test_execution_time', 0):.3f}s")
+elif result['status'] == 'COMPILE_ERROR':
+    print(f"❌ Compilation failed: {result.get('compile_output', 'Unknown error')}")
 else:
     print(f"❌ Test failed ({result['status']}): {result.get('stderr', 'Unknown error')}")
 ```
@@ -134,9 +155,178 @@ config = {
 
 result = judge.run_microservice('cpp', cpp_code, config)
 print(f"Status: {result['status']}")
+
+# With timeout controls for complex C++ compilation
+result = judge.run_microservice(
+    'cpp', 
+    cpp_code, 
+    config,
+    compile_timeout=45,     # C++ may need more compilation time
+    execution_timeout=5     # Keep execution time tight
+)
+print(f"Status: {result['status']}")
+print(f"Compile time: {result.get('compile_execution_time', 0):.3f}s")
+print(f"Execution time: {result.get('test_execution_time', 0):.3f}s")
 ```
 
 ## Advanced Features
+
+### Timeout Control
+
+The Judge MicroService provides fine-grained timeout control with separate limits for compilation and execution phases:
+
+```python
+from judge_micro.services.efficient import JudgeMicroservice
+
+judge = JudgeMicroservice()
+
+# Basic timeout configuration
+result = judge.run_microservice(
+    language='c',
+    user_code=code,
+    config=config,
+    compile_timeout=30,     # 30 seconds for compilation
+    execution_timeout=10    # 10 seconds for test execution
+)
+
+# Using test_with_version with timeouts
+result = judge.test_with_version(
+    language='cpp',
+    user_code=cpp_code,
+    solve_params=params,
+    expected=expected,
+    standard='cpp20',
+    compile_timeout=45,     # C++20 features may need more compile time
+    execution_timeout=5     # Keep execution tight
+)
+```
+
+#### Timeout Status Handling
+
+```python
+def handle_timeout_result(result):
+    """Handle different timeout scenarios"""
+    
+    if result['status'] == 'COMPILE_TIMEOUT':
+        print(f"❌ Compilation took too long: {result['message']}")
+        print(f"📊 Compilation time: {result.get('compile_execution_time', 0):.3f}s")
+        return 'compilation_timeout'
+    
+    elif result['status'] == 'TIMEOUT':
+        print(f"❌ Execution took too long: {result['message']}")
+        print(f"📊 Test execution time: {result.get('test_execution_time', 0):.3f}s")
+        print(f"📊 Compilation time: {result.get('compile_execution_time', 0):.3f}s")
+        return 'execution_timeout'
+    
+    elif result['status'] == 'SUCCESS':
+        print(f"✅ Success!")
+        print(f"📊 Total time: {result.get('total_execution_time', 0):.3f}s")
+        print(f"📊 Compilation: {result.get('compile_execution_time', 0):.3f}s")
+        print(f"📊 Execution: {result.get('test_execution_time', 0):.3f}s")
+        return 'success'
+    
+    else:
+        print(f"❌ Other error: {result['status']}")
+        return 'error'
+
+# Usage
+result = judge.run_microservice('c', code, config, compile_timeout=20, execution_timeout=5)
+status = handle_timeout_result(result)
+```
+
+#### Adaptive Timeout Strategy
+
+```python
+class AdaptiveTimeoutJudge:
+    def __init__(self):
+        self.judge = JudgeMicroservice()
+        self.timeout_history = {}
+    
+    def smart_evaluate(self, language: str, code: str, config: dict, user_id: str = None):
+        """Adaptively set timeouts based on code complexity and history"""
+        
+        # Analyze code complexity
+        compile_timeout = self._estimate_compile_timeout(language, code)
+        execution_timeout = self._estimate_execution_timeout(code, config)
+        
+        # Adjust based on user history
+        if user_id and user_id in self.timeout_history:
+            history = self.timeout_history[user_id]
+            compile_timeout = max(compile_timeout, history.get('avg_compile_time', 0) * 1.5)
+            execution_timeout = max(execution_timeout, history.get('avg_execution_time', 0) * 1.5)
+        
+        # Execute with adaptive timeouts
+        result = self.judge.run_microservice(
+            language, code, config,
+            compile_timeout=int(compile_timeout),
+            execution_timeout=int(execution_timeout)
+        )
+        
+        # Update history
+        if user_id and result['status'] == 'SUCCESS':
+            self._update_timeout_history(user_id, result)
+        
+        return result
+    
+    def _estimate_compile_timeout(self, language: str, code: str) -> float:
+        """Estimate compilation timeout based on code characteristics"""
+        base_timeout = 30.0 if language == 'c' else 45.0  # C++ needs more time
+        
+        # Adjust based on code length and complexity
+        lines = len(code.split('\n'))
+        complexity_factor = 1.0 + (lines / 1000)  # +1s per 1000 lines
+        
+        # Check for complex features
+        if language == 'cpp':
+            if 'template' in code or 'std::' in code:
+                complexity_factor *= 1.5
+            if '#include <algorithm>' in code or '#include <vector>' in code:
+                complexity_factor *= 1.2
+        
+        return base_timeout * complexity_factor
+    
+    def _estimate_execution_timeout(self, code: str, config: dict) -> float:
+        """Estimate execution timeout based on test parameters"""
+        base_timeout = 10.0
+        
+        # Adjust based on input size
+        for param in config.get('solve_params', []):
+            if isinstance(param.get('input_value'), list):
+                list_size = len(param['input_value'])
+                base_timeout += list_size / 1000  # +1s per 1000 elements
+        
+        # Check for potential performance issues
+        if 'for' in code.lower() or 'while' in code.lower():
+            base_timeout *= 1.5
+        if 'sort' in code.lower():
+            base_timeout *= 1.2
+        
+        return base_timeout
+    
+    def _update_timeout_history(self, user_id: str, result: dict):
+        """Update user's timeout history"""
+        if user_id not in self.timeout_history:
+            self.timeout_history[user_id] = {
+                'compile_times': [],
+                'execution_times': [],
+                'avg_compile_time': 0,
+                'avg_execution_time': 0
+            }
+        
+        history = self.timeout_history[user_id]
+        
+        if 'compile_execution_time' in result:
+            history['compile_times'].append(result['compile_execution_time'])
+            history['avg_compile_time'] = sum(history['compile_times']) / len(history['compile_times'])
+        
+        if 'test_execution_time' in result:
+            history['execution_times'].append(result['test_execution_time'])
+            history['avg_execution_time'] = sum(history['execution_times']) / len(history['execution_times'])
+
+# Usage
+adaptive_judge = AdaptiveTimeoutJudge()
+result = adaptive_judge.smart_evaluate('cpp', complex_cpp_code, config, user_id='user123')
+```
 
 ### Remote Docker Execution
 
@@ -271,12 +461,28 @@ class SafeJudgeService:
             return {'status': 'COMPILE_ERROR', 'error': 'Invalid configuration', 'stderr': ''}
         
         try:
-            # Execute evaluation
+            # Execute evaluation with timeout controls
             result = self.judge.run_microservice(
-                language, code, config, show_logs=True
+                language, code, config, 
+                show_logs=True,
+                compile_timeout=30,
+                execution_timeout=10
             )
             
             logger.info(f"Evaluation completed: {result['status']}")
+            
+            # Log timing information
+            if 'compile_execution_time' in result:
+                logger.info(f"Compilation time: {result['compile_execution_time']:.3f}s")
+            if 'test_execution_time' in result:
+                logger.info(f"Execution time: {result['test_execution_time']:.3f}s")
+            
+            # Handle timeout-specific errors
+            if result['status'] == 'COMPILE_TIMEOUT':
+                logger.warning(f"Compilation timeout: {result.get('message', 'Unknown')}")
+            elif result['status'] == 'TIMEOUT':
+                logger.warning(f"Execution timeout: {result.get('message', 'Unknown')}")
+            
             return result
             
         except Exception as e:
@@ -384,183 +590,6 @@ print("Benchmark Results:")
 print(f"Successful runs: {benchmark_results['statistics']['successful_runs']}/10")
 print(f"Average time: {benchmark_results['statistics']['average_time']:.3f}s")
 print(f"Standard deviation: {benchmark_results['statistics']['std_deviation']:.3f}s")
-```
-
-## Web Framework Integration
-
-### Flask Application
-
-```python
-from flask import Flask, request, jsonify, render_template
-from judge_micro.services.efficient import JudgeMicroservice
-import logging
-
-app = Flask(__name__)
-logging.basicConfig(level=logging.INFO)
-
-# Initialize judge service once
-judge_service = JudgeMicroservice()
-
-@app.route('/')
-def index():
-    return render_template('index.html')
-
-@app.route('/api/evaluate', methods=['POST'])
-def evaluate_code():
-    try:
-        data = request.json
-        
-        # Validate input
-        required_fields = ['language', 'code', 'config']
-        if not all(field in data for field in required_fields):
-            return jsonify({'error': 'Missing required fields'}), 400
-        
-        # Execute evaluation
-        result = judge_service.run_microservice(
-            data['language'],
-            data['code'],
-            data['config'],
-            show_logs=False
-        )
-        
-        return jsonify(result)
-        
-    except Exception as e:
-        app.logger.error(f"Evaluation error: {e}")
-        return jsonify({'error': str(e)}), 500
-
-@app.route('/api/health')
-def health_check():
-    try:
-        # Simple test to verify service is working
-        test_result = judge_service.run_microservice(
-            'c',
-            'int solve() { return 42; }',
-            {
-                "solve_params": [],
-                "expected": {},
-                "function_type": "int"
-            }
-        )
-        
-        return jsonify({
-            'status': 'healthy',
-            'service_available': test_result['status'] == 'SUCCESS'
-        })
-    except Exception as e:
-        return jsonify({
-            'status': 'unhealthy',
-            'error': str(e)
-        }), 503
-
-if __name__ == '__main__':
-    app.run(host='0.0.0.0', port=5000, debug=False)
-```
-
-### FastAPI Application
-
-```python
-from fastapi import FastAPI, HTTPException, BackgroundTasks
-from pydantic import BaseModel, Field
-from typing import Dict, List, Optional
-from judge_micro.services.efficient import JudgeMicroservice
-import asyncio
-import uuid
-
-app = FastAPI(title="Judge MicroService API", version="1.0.0")
-
-# Initialize service
-judge_service = JudgeMicroservice()
-
-# In-memory storage for async results (use Redis in production)
-results_store: Dict[str, dict] = {}
-
-class EvaluationRequest(BaseModel):
-    language: str = Field(..., regex="^(c|cpp)$")
-    code: str = Field(..., min_length=1)
-    config: dict
-    
-class EvaluationResponse(BaseModel):
-    job_id: str
-    status: str
-    result: Optional[dict] = None
-
-@app.post("/evaluate", response_model=dict)
-async def evaluate_code(request: EvaluationRequest):
-    """Synchronous code evaluation"""
-    try:
-        result = judge_service.run_microservice(
-            request.language,
-            request.code,
-            request.config
-        )
-        return result
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
-
-@app.post("/evaluate/async", response_model=EvaluationResponse)
-async def evaluate_code_async(request: EvaluationRequest, background_tasks: BackgroundTasks):
-    """Asynchronous code evaluation"""
-    job_id = str(uuid.uuid4())
-    
-    def run_evaluation():
-        try:
-            result = judge_service.run_microservice(
-                request.language,
-                request.code,
-                request.config
-            )
-            results_store[job_id] = {
-                'status': 'completed',
-                'result': result
-            }
-        except Exception as e:
-            results_store[job_id] = {
-                'status': 'failed',
-                'error': str(e)
-            }
-    
-    # Store initial status
-    results_store[job_id] = {'status': 'processing'}
-    
-    # Run evaluation in background
-    background_tasks.add_task(run_evaluation)
-    
-    return EvaluationResponse(
-        job_id=job_id,
-        status='processing'
-    )
-
-@app.get("/evaluate/async/{job_id}", response_model=EvaluationResponse)
-async def get_evaluation_result(job_id: str):
-    """Get asynchronous evaluation result"""
-    if job_id not in results_store:
-        raise HTTPException(status_code=404, detail="Job not found")
-    
-    job_data = results_store[job_id]
-    
-    response = EvaluationResponse(
-        job_id=job_id,
-        status=job_data['status']
-    )
-    
-    if job_data['status'] == 'completed':
-        response.result = job_data['result']
-    elif job_data['status'] == 'failed':
-        response.result = {'error': job_data['error']}
-    
-    return response
-
-@app.get("/health")
-async def health_check():
-    """Service health check"""
-    return {
-        'status': 'healthy',
-        'service': 'Judge MicroService',
-        'version': '1.0.0'
-    }
-
-# Run with: uvicorn main:app --host 0.0.0.0 --port 8000
 ```
 
 ## Configuration Patterns

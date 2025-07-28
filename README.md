@@ -1,6 +1,6 @@
-# Judge Micro 🚀
+![repo_logo](https://raw.githubusercontent.com/TsukiSama9292/judge_micro/refs/heads/main/assets/repo_logo.png)
 
-> A modern, configuration-driven online judge microservice system built for competitive programming evaluation.
+A modern, configuration-driven online judge microservice system built for competitive programming evaluation.
 
 ## ✨ Features
 
@@ -93,6 +93,7 @@
 
 ```bash
 git clone https://github.com/TsukiSama9292/judge_micro.git
+cd judge_micro
 docker compose up -d
 ```
 
@@ -108,109 +109,25 @@ cd judge_micro
 pip install -e .
 ```
 
-### Basic Usage
+### MUST: Pull C, C++ Judge Micro Image
 
-```python
-from judge_micro.services.efficient import judge_micro
-
-# C language example
-c_code = '''
-#include <stdio.h>
-
-int solve(int *a, int *b) {
-    *a = *a * 2;      // 3 * 2 = 6
-    *b = *b * 2 + 1;  // 4 * 2 + 1 = 9
-    return 0;
-}
-'''
-
-# Configuration
-config = {
-    "solve_params": [
-        {"name": "a", "type": "int", "input_value": 3},
-        {"name": "b", "type": "int", "input_value": 4}
-    ],
-    "expected": {"a": 6, "b": 9},
-    "function_type": "int"
-}
-
-# Execute
-result = judge_micro.run_microservice(
-    language='c',
-    user_code=c_code,
-    config=config
-)
-
-print(f"Status: {result['status']}")
-if result['status'] == 'SUCCESS':
-    print(f"✅ Match: {result.get('match', True)}")
-    print(f"⏱️ Execution time: {result['time_ms']:.3f}ms")
-elif result['status'] == 'COMPILE_ERROR':
-    print(f"❌ Compilation failed: {result['stderr']}")
-elif result['status'] == 'RUNTIME_ERROR':
-    print(f"❌ Runtime error: {result['stderr']}")
-elif result['status'] == 'WRONG_ANSWER':
-    print(f"❌ Wrong answer - Expected: {result['expected']}, Got: {result['actual']}")
+```bash
+docker pull tsukisama9292/judge_micro:c
+docker pull tsukisama9292/judge_micro:c_plus_plus
 ```
 
-## 📊 Example Output
+## 🌍 Use Cases
 
-### Successful Execution
-```json
-{
-  "status": "SUCCESS",
-  "match": true,
-  "time_ms": 1.234,
-  "cpu_utime": 0.0012,
-  "cpu_stime": 0.0008,
-  "maxrss_mb": 2.1,
-  "compile_time_ms": 145.6,
-  "expected": {"a": 6, "b": 9},
-  "actual": {"a": 6, "b": 9},
-  "stdout": "Debug output from user code",
-  "stderr": ""
-}
-```
+- **Online Judge Platforms**: Competitive programming websites
+- **Educational Systems**: Automated assignment grading
+- **Coding Interviews**: Technical assessment platforms
+- **Code Quality Tools**: Automated testing and validation
+- **Research Projects**: Algorithm performance evaluation
 
-### Compilation Error
-```json
-{
-  "status": "COMPILE_ERROR",
-  "error": "Compilation failed",
-  "stderr": "error: expected ';' before '}' token",
-  "exit_code": 1,
-  "compile_time_ms": 89.3
-}
-```
+## 📚 Documentation
 
-### Runtime Error
-```json
-{
-  "status": "RUNTIME_ERROR",
-  "error": "Execution failed", 
-  "stderr": "Segmentation fault (core dumped)",
-  "exit_code": 139,
-  "time_ms": 23.1,
-  "compile_time_ms": 156.7
-}
-```
-
-### Wrong Answer
-```json
-{
-  "status": "WRONG_ANSWER",
-  "match": false,
-  "expected": {"a": 6, "b": 9},
-  "actual": {"a": 6, "b": 8},
-  "time_ms": 2.1,
-  "cpu_utime": 0.002,
-  "cpu_stime": 0.001,
-  "maxrss_mb": 1.3,
-  "compile_time_ms": 128.5,
-  "stdout": "Debug: Processing values...",
-  "stderr": ""
-}
-```
+- [C/C++ Usage Examples](https://github.com/TsukiSama9292/judge_micro/blob/main/examples/Judge_MicroService.ipynb)
+- [Python SDK Guide](https://github.com/TsukiSama9292/judge_micro/blob/main/docs/python_sdk.md)
 
 ## 🔧 Advanced Configuration
 
@@ -233,23 +150,6 @@ os.environ['CONTAINER_CPU'] = '1.0'      # CPU limit
 os.environ['CONTAINER_MEM'] = '256m'     # Memory limit
 os.environ['CONTAINER_COUNT'] = '5'      # Max containers
 ```
-
-## 🌍 Use Cases
-
-- **Online Judge Platforms**: Competitive programming websites
-- **Educational Systems**: Automated assignment grading
-- **Coding Interviews**: Technical assessment platforms
-- **Code Quality Tools**: Automated testing and validation
-- **Research Projects**: Algorithm performance evaluation
-
-## 📚 Documentation
-
-- [C/C++ Usage Examples](https://github.com/TsukiSama9292/judge_micro/blob/main/examples/Judge_MicroService.ipynb)
-- [API Reference](https://github.com/TsukiSama9292/judge_micro/blob/main/docs/api.md)
-- [Configuration Guide](https://github.com/TsukiSama9292/judge_micro/blob/main/docs/configuration.md)
-- [Error Handling & Status Codes](https://github.com/TsukiSama9292/judge_micro/blob/main/docs/error_handling.md)
-- [Python SDK Guide](https://github.com/TsukiSama9292/judge_micro/blob/main/docs/python_sdk.md)
-- [Deployment Guide](https://github.com/TsukiSama9292/judge_micro/blob/main/docs/deployment.md)
 
 ## 📄 License
 

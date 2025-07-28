@@ -1,18 +1,20 @@
 """
-設定該應用的環境變量和配置
-這些變量可以在 .env.local 或 .env 文件中定義
+Environment variables and configuration settings for this application
+These variables can be defined in .env.local or .env files
 
-參數介紹：
-- container_cpu: 每個容器的 CPU 限制，默認為 0.5，這個功能是照 CPU 運行時間去限制的，算是比較細膩的方法
-- container_mem: 每個容器的內存限制，默認為 128m
-- docker_ssh_remote: 預設為 False，是否使用遠端 Docker SSH 連接
-- docker_client: 根據 docker_ssh_remote 的值來決定使用本地 Docker 客戶端還是遠端 SSH 連接
-- 如果 docker_ssh_remote 為 True，則需要提供以下配置：
-  - host: 遠端 Docker 主機的 IP
-  - port: SSH 端口，默認為 22
-  - key_path: SSH 私鑰路徑，默認為 ~/.ssh/id_rsa
-  - username: SSH 用戶名，默認為 root
-  - password: SSH 密碼，默認為空字符串
+Parameter descriptions:
+- container_cpu: CPU limit per container, default is 0.5, this feature limits based on CPU runtime, a relatively fine-grained method
+- container_mem: Memory limit per container, default is 128m
+- container_timeout: Default execution timeout in seconds, default is 30
+- continue_on_timeout: Whether to continue execution after timeout, default is False
+- docker_ssh_remote: Default is False, whether to use remote Docker SSH connection
+- docker_client: Determines whether to use local Docker client or remote SSH connection based on docker_ssh_remote value
+- If docker_ssh_remote is True, the following configurations are required:
+  - host: Remote Docker host IP
+  - port: SSH port, default is 22
+  - key_path: SSH private key path, default is ~/.ssh/id_rsa
+  - username: SSH username, default is root
+  - password: SSH password, default is empty string
 """
 
 import os
@@ -20,7 +22,7 @@ from dotenv import load_dotenv
 from pydantic.v1 import BaseSettings
 import docker
 
-# 加載環境變量: .env.local 和 .env(優先)
+# Load environment variables: .env.local first, then .env (which overrides .env.local)
 load_dotenv(".env.local", override=False)
 load_dotenv(".env", override=True)
 
@@ -31,6 +33,10 @@ class Settings(BaseSettings):
     container_cpu: float = float(os.getenv("CONTAINER_CPU", 0.5))
     container_mem: str = os.getenv("CONTAINER_MEM", "128m")
     
+    compile_timeout: int = int(os.getenv("COMPILE_TIMEOUT", 10))
+    container_timeout: int = int(os.getenv("CONTAINER_TIMEOUT", 10))
+    continue_on_timeout: bool = os.getenv("CONTINUE_ON_TIMEOUT", "false").lower() in ("true", "1", "yes")
+    
     docker_ssh_remote: bool = os.getenv("DOCKER_SSH_REMOTE", "false").lower() in ("true", "1", "yes")
 
     DOCKER_SSH_HOST: str = os.getenv("DOCKER_SSH_HOST", "127.0.0.1")
@@ -39,5 +45,5 @@ class Settings(BaseSettings):
     DOCKER_SSH_USER: str = os.getenv("DOCKER_SSH_USER", "root")
     DOCKER_SSH_PASSWORD: str = os.getenv("DOCKER_SSH_PASSWORD", "password")
 
-# 初始化設定
+# Initialize settings
 setting = Settings()
