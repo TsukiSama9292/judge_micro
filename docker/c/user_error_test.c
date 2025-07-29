@@ -1,16 +1,16 @@
-// 故意包含編譯錯誤的測試代碼
+// Test code intentionally containing compilation errors
 #include <stdio.h>
 
 int solve(int *result) {
-    // 錯誤1: 未聲明的變量
+    // Error 1: Undeclared variable
     *result = undefined_variable + 42;
     
-    // 錯誤2: 語法錯誤
+    // Error 2: Syntax error
     if (result == NULL {
         return -1;
     }
     
-    // 錯誤3: 類型不匹配
+    // Error 3: Type mismatch
     char *str = 123;
     printf("String: %s\n", str);
     

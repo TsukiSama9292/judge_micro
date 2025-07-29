@@ -1,6 +1,6 @@
-# 配置驅動 OJ 微服務 Makefile
+# Configuration-Driven OJ Microservice Makefile
 
-# 變數定義
+# Variable definitions
 CC = gcc
 CFLAGS = -Wall -Wextra -std=c99 -g
 LIBS = -lcjson
@@ -8,84 +8,84 @@ HARNESS = harness
 CONFIG = config.json
 RESULT = result.json
 
-# 默認目標
+# Default target
 .PHONY: all build test clean help examples
 
 all: build
 
-# 編譯 harness
+# Compile harness
 build: $(HARNESS)
 
 $(HARNESS): harness.c
-	@echo "編譯 harness..."
+	@echo "Compiling harness..."
 	$(CC) $(CFLAGS) harness.c -o $(HARNESS) $(LIBS)
-	@echo "✅ 編譯完成"
+	@echo "✅ Compilation completed"
 
-# 運行測試（可指定配置文件）
+# Run test (can specify config file)
 test-config:
 	@if [ -z "$(CONFIG_FILE)" ]; then \
-		echo "使用方法: make test-config CONFIG_FILE=配置文件名"; \
-		echo "例如: make test-config CONFIG_FILE=config_c11.json"; \
+		echo "Usage: make test-config CONFIG_FILE=config_file_name"; \
+		echo "Example: make test-config CONFIG_FILE=config_c11.json"; \
 		exit 1; \
 	fi
-	@echo "使用配置文件: $(CONFIG_FILE)"
+	@echo "Using config file: $(CONFIG_FILE)"
 	./$(HARNESS) $(CONFIG_FILE) result_$(basename $(CONFIG_FILE)).json
-	@echo "測試完成，結果保存在 result_$(basename $(CONFIG_FILE)).json"
+	@echo "Test completed, results saved to result_$(basename $(CONFIG_FILE)).json"
 
-# 測試 C11 標準
+# Test C11 standard
 test-c11: build
-	@echo "測試 C11 標準..."
+	@echo "Testing C11 standard..."
 	./$(HARNESS) config_c11.json result_c11.json
-	@echo "C11 測試完成"
+	@echo "C11 test completed"
 
-# 測試 C23 標準  
+# Test C23 standard  
 test-c23: build
-	@echo "測試 C23 標準..."
+	@echo "Testing C23 standard..."
 	./$(HARNESS) config_c23.json result_c23.json
-	@echo "C23 測試完成"
+	@echo "C23 test completed"
 
-# 測試各種範本
+# Test various templates
 test-squares: build
-	@echo "測試平方計算..."
+	@echo "Testing square calculation..."
 	@cp user_squares.c user.c
 	./$(HARNESS) config_squares.json result_squares.json
-	@echo "平方計算測試完成"
+	@echo "Square calculation test completed"
 
 test-advanced: build
-	@echo "測試進階算法 (GCD/LCM)..."
+	@echo "Testing advanced algorithms (GCD/LCM)..."
 	@cp user_advanced.c user.c
 	./$(HARNESS) config_advanced.json result_advanced.json
-	@echo "進階算法測試完成"
+	@echo "Advanced algorithm test completed"
 
 test-factorial: build
-	@echo "測試階乘計算..."
+	@echo "Testing factorial calculation..."
 	@cp user_factorial.c user.c
 	./$(HARNESS) config_factorial.json result_factorial.json
-	@echo "階乘計算測試完成"
+	@echo "Factorial calculation test completed"
 
 test-error: build
-	@echo "測試錯誤處理..."
+	@echo "Testing error handling..."
 	@cp user_error_test.c user.c
 	./$(HARNESS) config_error_test.json result_error_test.json
-	@echo "錯誤處理測試完成"
+	@echo "Error handling test completed"
 
 test-c11-feature: build
-	@echo "測試 C11 特性..."
+	@echo "Testing C11 features..."
 	@cp user_c11_test.c user.c
 	./$(HARNESS) config_c11.json result_c11_feature.json
-	@echo "C11 特性測試完成"
+	@echo "C11 feature test completed"
 
 test-warning: build
-	@echo "測試警告處理..."
+	@echo "Testing warning handling..."
 	@cp user_warning_test.c user.c
 	./$(HARNESS) config_warning_test.json result_warning.json 2>/dev/null || true
-	@echo "警告處理測試完成"
+	@echo "Warning handling test completed"
 
-# 運行所有範本測試
+# Run all template tests
 test-all: build
-	@echo "🧪 運行所有範本測試..."
+	@echo "🧪 Running all template tests..."
 	@echo ""
-	@echo "1️⃣ 基本數學運算測試"
+	@echo "1️⃣ Basic mathematical operations test"
 	@echo "========================"
 	@if [ -f user_basic.c ]; then \
 		cp user_basic.c user.c; \
@@ -94,7 +94,7 @@ test-all: build
 	@cat result_basic.json
 	@echo ""
 	@echo ""
-	@echo "2️⃣ 平方計算測試"
+	@echo "2️⃣ Square calculation test"
 	@echo "==================="
 	@if [ -f user_squares.c ]; then \
 		cp user_squares.c user.c; \
@@ -103,7 +103,7 @@ test-all: build
 	fi
 	@echo ""
 	@echo ""
-	@echo "3️⃣ 進階算法測試 (GCD/LCM)"
+	@echo "3️⃣ Advanced algorithm test (GCD/LCM)"
 	@echo "=========================="
 	@if [ -f user_advanced.c ]; then \
 		cp user_advanced.c user.c; \
@@ -112,7 +112,7 @@ test-all: build
 	fi
 	@echo ""
 	@echo ""
-	@echo "4️⃣ 階乘計算測試"
+	@echo "4️⃣ Factorial calculation test"
 	@echo "=================="
 	@if [ -f user_factorial.c ]; then \
 		cp user_factorial.c user.c; \
@@ -121,7 +121,7 @@ test-all: build
 	fi
 	@echo ""
 	@echo ""
-	@echo "5️⃣ C11 特性測試"
+	@echo "5️⃣ C11 feature test"
 	@echo "=================="
 	@if [ -f user_c11_test.c ]; then \
 		cp user_c11_test.c user.c; \
@@ -129,91 +129,91 @@ test-all: build
 		cat result_c11_all.json; \
 	fi
 	@echo ""
-	@echo "✅ 所有測試完成"
+	@echo "✅ All tests completed"
 
-# 運行測試
+# Run test
 test: build
-	@echo "運行測試..."
+	@echo "Running test..."
 	./$(HARNESS) $(CONFIG) $(RESULT)
-	@echo "測試完成，結果保存在 $(RESULT)"
+	@echo "Test completed, result saved to $(RESULT)"
 
-# 運行測試並顯示詳細錯誤（如果有的話）
+# Run test and show detailed errors (if any)
 test-verbose: build
-	@echo "運行測試（詳細模式）..."
+	@echo "Running test (verbose mode)..."
 	./$(HARNESS) $(CONFIG) $(RESULT)
-	@echo "測試完成，結果保存在 $(RESULT)"
+	@echo "Test completed, result saved to $(RESULT)"
 	@if [ -f $(RESULT) ]; then \
-		echo "=== 測試結果 ==="; \
+		echo "=== Test Result ==="; \
 		cat $(RESULT) | jq '.' 2>/dev/null || cat $(RESULT); \
 		if grep -q "COMPILE_ERROR\|ERROR" $(RESULT); then \
 			echo ""; \
-			echo "=== 錯誤詳情 ==="; \
-			cat $(RESULT) | jq -r '.stderr // .error // "無詳細錯誤信息"' 2>/dev/null; \
+			echo "=== Error Details ==="; \
+			cat $(RESULT) | jq -r '.stderr // .error // "No detailed error information"' 2>/dev/null; \
 		fi \
 	fi
 
-# 全面功能檢查測試
+# Comprehensive functionality test
 test-complete: build
-	@echo "🔍 開始全面功能檢查..."
+	@echo "🔍 Starting comprehensive functionality check..."
 	@echo ""
 	@failed=0; total=0; \
-	echo "📋 測試 squares..."; total=$$((total + 1)); \
+	echo "📋 Testing squares..."; total=$$((total + 1)); \
 	if $(MAKE) test-squares >/dev/null 2>&1 && [ -f result_squares.json ] && grep -q '"status".*"SUCCESS"' result_squares.json; then \
-		echo "✅ squares: 通過"; \
+		echo "✅ squares: Passed"; \
 	else \
-		echo "❌ squares: 失敗"; failed=$$((failed + 1)); \
+		echo "❌ squares: Failed"; failed=$$((failed + 1)); \
 	fi; \
-	echo "📋 測試 advanced..."; total=$$((total + 1)); \
+	echo "📋 Testing advanced..."; total=$$((total + 1)); \
 	if $(MAKE) test-advanced >/dev/null 2>&1 && [ -f result_advanced.json ] && grep -q '"status".*"SUCCESS"' result_advanced.json; then \
-		echo "✅ advanced: 通過"; \
+		echo "✅ advanced: Passed"; \
 	else \
-		echo "❌ advanced: 失敗"; failed=$$((failed + 1)); \
+		echo "❌ advanced: Failed"; failed=$$((failed + 1)); \
 	fi; \
-	echo "📋 測試 factorial..."; total=$$((total + 1)); \
+	echo "📋 Testing factorial..."; total=$$((total + 1)); \
 	if $(MAKE) test-factorial >/dev/null 2>&1 && [ -f result_factorial.json ] && grep -q '"status".*"SUCCESS"' result_factorial.json; then \
-		echo "✅ factorial: 通過"; \
+		echo "✅ factorial: Passed"; \
 	else \
-		echo "❌ factorial: 失敗"; failed=$$((failed + 1)); \
+		echo "❌ factorial: Failed"; failed=$$((failed + 1)); \
 	fi; \
-	echo "📋 測試 error..."; total=$$((total + 1)); \
+	echo "📋 Testing error..."; total=$$((total + 1)); \
 	$(MAKE) test-error >/dev/null 2>&1; error_exit=$$?; \
 	if [ -f result_error_test.json ]; then \
 		if grep -q '"status".*"ERROR"' result_error_test.json || grep -q '"status".*"COMPILE_ERROR"' result_error_test.json || [ $$error_exit -ne 0 ]; then \
-			echo "✅ error: 通過 (正確產生錯誤)"; \
+			echo "✅ error: Passed (correctly generated error)"; \
 		else \
-			echo "❌ error: 失敗 (應該產生錯誤但沒有)"; failed=$$((failed + 1)); \
+			echo "❌ error: Failed (should generate error but didn't)"; failed=$$((failed + 1)); \
 		fi; \
 	else \
-		echo "❌ error: 失敗 (無結果文件)"; failed=$$((failed + 1)); \
+		echo "❌ error: Failed (no result file)"; failed=$$((failed + 1)); \
 	fi; \
-	echo "📋 測試 c11-feature..."; total=$$((total + 1)); \
+	echo "📋 Testing c11-feature..."; total=$$((total + 1)); \
 	if $(MAKE) test-c11-feature >/dev/null 2>&1 && [ -f result_c11_feature.json ] && grep -q '"status".*"SUCCESS"' result_c11_feature.json; then \
-		echo "✅ c11-feature: 通過"; \
+		echo "✅ c11-feature: Passed"; \
 	else \
-		echo "❌ c11-feature: 失敗"; failed=$$((failed + 1)); \
+		echo "❌ c11-feature: Failed"; failed=$$((failed + 1)); \
 	fi; \
-	echo "📋 測試 warning..."; total=$$((total + 1)); \
+	echo "📋 Testing warning..."; total=$$((total + 1)); \
 	if $(MAKE) test-warning >/dev/null 2>&1 && [ -f result_warning.json ] && grep -q '"status".*"SUCCESS"' result_warning.json; then \
-		echo "✅ warning: 通過"; \
+		echo "✅ warning: Passed"; \
 	else \
-		echo "❌ warning: 失敗"; failed=$$((failed + 1)); \
+		echo "❌ warning: Failed"; failed=$$((failed + 1)); \
 	fi; \
 	echo ""; \
-	echo "📊 測試結果統計:"; \
-	echo "   總測試數: $$total"; \
-	echo "   通過: $$((total - failed))"; \
-	echo "   失敗: $$failed"; \
-	echo "   成功率: $$((total > 0 ? (total - failed) * 100 / total : 0))%"; \
+	echo "📊 Test result statistics:"; \
+	echo "   Total tests: $$total"; \
+	echo "   Passed: $$((total - failed))"; \
+	echo "   Failed: $$failed"; \
+	echo "   Success rate: $$((total > 0 ? (total - failed) * 100 / total : 0))%"; \
 	if [ $$failed -eq 0 ]; then \
-		echo "🎉 所有功能測試通過！"; \
+		echo "🎉 All functionality tests passed!"; \
 		echo "CI_STATUS=SUCCESS"; \
 	else \
-		echo "⚠️  有 $$failed 個測試失敗，但這在預期範圍內"; \
+		echo "⚠️  $$failed tests failed, but this is within expected range"; \
 		echo "CI_STATUS=EXPECTED_PARTIAL_FAILURE"; \
 	fi; \
-	echo "exit_code=0" # CI/CD 友好：即使有預期的失敗也不中斷流程
+	echo "exit_code=0" # CI/CD friendly: don't interrupt process even with expected failures
 
-# CI/CD 專用測試 (輸出 JSON 格式結果)
+# CI/CD specialized test (outputs JSON format results)
 test-ci: build
 	@echo '{"test_suite": "C OJ Microservice", "timestamp": "'$$(date -u +%Y-%m-%dT%H:%M:%SZ)'", "tests": ['
 	@failed=0; total=0; first=true; \
@@ -249,122 +249,122 @@ test-ci: build
 	echo '  "failed": '$$failed','; \
 	echo '  "success_rate": '$$((total > 0 ? (total - failed) * 100 / total : 0))'}}'
 
-# 顯示結果
+# Show result
 show-result:
 	@if [ -f $(RESULT) ]; then \
-		echo "=== 測試結果 ==="; \
+		echo "=== Test Result ==="; \
 		cat $(RESULT) | jq '.' 2>/dev/null || cat $(RESULT); \
 	else \
-		echo "結果文件不存在，請先運行 make test"; \
+		echo "Result file does not exist, please run make test first"; \
 	fi
 
-# 運行所有範例
+# Run all examples
 examples: build
-	@echo "=== 運行所有範例 ==="
-	@echo "1. 基本範例..."
+	@echo "=== Running all examples ==="
+	@echo "1. Basic example..."
 	@cp user.c user_backup.c
 	@cp user.c user_temp.c
 	@./$(HARNESS) config.json result_basic.json
-	@echo "   狀態: $$(cat result_basic.json | grep -o '\"status\":\"[^\"]*\"' | cut -d: -f2 | tr -d '\"')"
+	@echo "   Status: $$(cat result_basic.json | grep -o '\"status\":\"[^\"]*\"' | cut -d: -f2 | tr -d '\"')"
 	
-	@echo "2. 平方範例..."
+	@echo "2. Square example..."
 	@cp user_squares.c user.c
 	@./$(HARNESS) config_squares.json result_squares.json
-	@echo "   狀態: $$(cat result_squares.json | grep -o '\"status\":\"[^\"]*\"' | cut -d: -f2 | tr -d '\"')"
+	@echo "   Status: $$(cat result_squares.json | grep -o '\"status\":\"[^\"]*\"' | cut -d: -f2 | tr -d '\"')"
 	
-	@echo "3. 階乘範例..."
+	@echo "3. Factorial example..."
 	@cp user_factorial.c user.c
 	@./$(HARNESS) config_factorial.json result_factorial.json
-	@echo "   狀態: $$(cat result_factorial.json | grep -o '\"status\":\"[^\"]*\"' | cut -d: -f2 | tr -d '\"')"
+	@echo "   Status: $$(cat result_factorial.json | grep -o '\"status\":\"[^\"]*\"' | cut -d: -f2 | tr -d '\"')"
 	
-	@echo "4. 進階範例..."
+	@echo "4. Advanced example..."
 	@cp user_advanced.c user.c
 	@./$(HARNESS) config_advanced.json result_advanced.json
-	@echo "   狀態: $$(cat result_advanced.json | grep -o '\"status\":\"[^\"]*\"' | cut -d: -f2 | tr -d '\"')"
+	@echo "   Status: $$(cat result_advanced.json | grep -o '\"status\":\"[^\"]*\"' | cut -d: -f2 | tr -d '\"')"
 	
 	@cp user_temp.c user.c
 	@rm -f user_temp.c user_backup.c
-	@echo "✅ 所有範例執行完成"
+	@echo "✅ All examples executed"
 
-# 清理生成文件
+# Clean generated files
 clean:
-	@echo "清理文件..."
+	@echo "Cleaning files..."
 	rm -f $(HARNESS) test_runner solve.h test_main.c
 	rm -f result*.json
-	@echo "✅ 清理完成"
+	@echo "✅ Cleaning completed"
 
-# 深度清理（包含範例結果）
+# Deep clean (including example results)
 clean-all: clean
 	rm -f user_backup.c user_temp.c
 
-# 檢查依賴
+# Check dependencies
 check-deps:
-	@echo "檢查依賴..."
-	@which gcc > /dev/null || (echo "❌ GCC 未安裝" && exit 1)
-	@echo "C 編譯器: $$(gcc --version | head -1)"
-	@pkg-config --exists libcjson || (echo "❌ libcjson 未安裝" && exit 1)
+	@echo "Checking dependencies..."
+	@which gcc > /dev/null || (echo "❌ GCC not installed" && exit 1)
+	@echo "C compiler: $$(gcc --version | head -1)"
+	@pkg-config --exists libcjson || (echo "❌ libcjson not installed" && exit 1)
 	@echo "✅ libcjson: $$(pkg-config --modversion libcjson)"
-	@echo "✅ 所有依賴已滿足"
+	@echo "✅ All dependencies satisfied"
 
-# 幫助信息
+# Help information
 help:
-	@echo "配置驅動 OJ 微服務 C 版本"
+	@echo "Configuration-Driven OJ Microservice C Version"
 	@echo ""
-	@echo "可用目標："
-	@echo "  build        - 編譯 harness"
-	@echo "  test         - 運行基本測試"
-	@echo "  test-verbose - 運行測試並顯示詳細錯誤信息"
-	@echo "  test-config  - 使用指定配置文件測試 (需要 CONFIG_FILE 參數)"
-	@echo "  test-c11     - 測試 C11 標準"
-	@echo "  test-c23     - 測試 C23 標準"
-	@echo "  test-all     - 運行所有範本測試"
-	@echo "  test-complete - 全面功能檢查測試"
-	@echo "  test-ci      - CI/CD 專用測試 (JSON 格式輸出)"
-	@echo "  show-result  - 顯示測試結果"
-	@echo "  examples     - 運行所有範例"
-	@echo "  clean        - 清理生成文件"
-	@echo "  clean-all    - 深度清理"
-	@echo "  check-deps   - 檢查依賴"
-	@echo "  help         - 顯示此幫助"
+	@echo "Available targets:"
+	@echo "  build        - Compile harness"
+	@echo "  test         - Run basic test"
+	@echo "  test-verbose - Run test and show detailed error information"
+	@echo "  test-config  - Test with specified config file (requires CONFIG_FILE parameter)"
+	@echo "  test-c11     - Test C11 standard"
+	@echo "  test-c23     - Test C23 standard"
+	@echo "  test-all     - Run all template tests"
+	@echo "  test-complete - Comprehensive functionality test"
+	@echo "  test-ci      - CI/CD specialized test (JSON format output)"
+	@echo "  show-result  - Show test results"
+	@echo "  examples     - Run all examples"
+	@echo "  clean        - Clean generated files"
+	@echo "  clean-all    - Deep clean"
+	@echo "  check-deps   - Check dependencies"
+	@echo "  help         - Show this help"
 	@echo ""
-	@echo "範本測試："
-	@echo "  test-squares      - 測試平方計算"
-	@echo "  test-advanced     - 測試進階算法 (GCD/LCM)"
-	@echo "  test-factorial    - 測試階乘計算"
-	@echo "  test-error        - 測試錯誤處理"
-	@echo "  test-c11-feature  - 測試 C11 特性"
-	@echo "  test-warning      - 測試警告處理"
+	@echo "Template tests:"
+	@echo "  test-squares      - Test square calculation"
+	@echo "  test-advanced     - Test advanced algorithms (GCD/LCM)"
+	@echo "  test-factorial    - Test factorial calculation"
+	@echo "  test-error        - Test error handling"
+	@echo "  test-c11-feature  - Test C11 features"
+	@echo "  test-warning      - Test warning handling"
 	@echo ""
-	@echo "使用方式:"
-	@echo "  make build                              # 編譯"
-	@echo "  make test                               # 測試"
-	@echo "  make test-config CONFIG_FILE=config.json # 指定配置測試"
-	@echo "  make test-c11                           # 測試 C11"
-	@echo "  make test-c23                           # 測試 C23"
-	@echo "  make test-all                           # 運行所有範本測試"
-	@echo "  make examples                           # 運行所有範例"
+	@echo "Usage:"
+	@echo "  make build                              # Compile"
+	@echo "  make test                               # Test"
+	@echo "  make test-config CONFIG_FILE=config.json # Test with specified config"
+	@echo "  make test-c11                           # Test C11"
+	@echo "  make test-c23                           # Test C23"
+	@echo "  make test-all                           # Run all template tests"
+	@echo "  make examples                           # Run all examples"
 	@echo ""
-	@echo "配置文件語言版本支持:"
+	@echo "Config file language version support:"
 	@echo "  c_standard: c89, c99, c11, c17, c23"
-	@echo "  compiler_flags: 自定義編譯器標誌"
+	@echo "  compiler_flags: Custom compiler flags"
 	@echo ""
-	@echo "手動使用:"
+	@echo "Manual usage:"
 	@echo "  ./harness config.json result.json"
 	@echo ""
-	@echo "配置文件："
-	@echo "  config.json                - 基本數學運算"
-	@echo "  config_squares.json        - 平方計算"
-	@echo "  config_advanced.json       - 進階算法 (GCD/LCM)"
-	@echo "  config_factorial.json      - 階乘計算"
-	@echo "  config_error_test.json     - 錯誤處理測試"
-	@echo "  config_c11.json            - C11 標準測試"
-	@echo "  config_c23.json            - C23 標準測試"
-	@echo "  config_warning_test.json   - 警告處理測試"
+	@echo "Config files:"
+	@echo "  config.json                - Basic mathematical operations"
+	@echo "  config_squares.json        - Square calculation"
+	@echo "  config_advanced.json       - Advanced algorithms (GCD/LCM)"
+	@echo "  config_factorial.json      - Factorial calculation"
+	@echo "  config_error_test.json     - Error handling test"
+	@echo "  config_c11.json            - C11 standard test"
+	@echo "  config_c23.json            - C23 standard test"
+	@echo "  config_warning_test.json   - Warning handling test"
 
-# 創建新題目模板
+# Create new problem template
 new-problem:
-	@read -p "題目名稱: " name; \
-	echo "創建題目: $$name"; \
+	@read -p "Problem name: " name; \
+	echo "Creating problem: $$name"; \
 	echo '{"solve_params":[{"name":"result","input_value":0}],"expected":{"result":42}}' > config_$$name.json; \
 	echo 'int solve(int *result) { *result = 42; return 0; }' > user_$$name.c; \
-	echo "✅ 已創建 config_$$name.json 和 user_$$name.c"
+	echo "✅ Created config_$$name.json and user_$$name.c"

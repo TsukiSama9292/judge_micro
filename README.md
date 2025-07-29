@@ -28,7 +28,7 @@ A modern, configuration-driven online judge microservice system for automated co
 ├──────────────────────────────────────────────────────────────────────┤
 │                                                                      │
 │  ┌─────────────────┐    ┌─────────────────┐    ┌───────────────────┐ │
-│  │  Client Code    │    │   Python SDK    │    │  Docker Manager   │ │
+│  │  Client Code    │    │  API / SDK      │    │  Docker Manager   │ │
 │  │  - Submit Code  │───▶│  - JudgeMicro   │───▶│  - Local/Remote   │ │
 │  │  - Get Results  │    │  - Validation   │    │  - SSH Support    │ │
 │  └─────────────────┘    └─────────────────┘    └───────────────────┘ │

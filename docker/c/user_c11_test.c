@@ -1,7 +1,7 @@
 #include <stdio.h>
 
 int solve(int *a, int *b) {
-    // C11 特性：使用 _Static_assert
+    // C11 feature: using _Static_assert
     _Static_assert(sizeof(int) >= 4, "int must be at least 4 bytes");
     
     printf("C11 feature test!\n");

@@ -1,36 +1,36 @@
 #!/bin/bash
-# 簡單演示腳本
+# Simple demonstration script
 
-echo "🎯 C 語言配置驅動 OJ 微服務演示"
+echo "🎯 C Language Configuration-Driven OJ Microservice Demo"
 echo "================================"
 
-# 確保 harness 已編譯
+# Ensure harness is compiled
 if [ ! -f harness ]; then
-    echo "📦 編譯 harness..."
+    echo "📦 Compiling harness..."
     make build
 fi
 
 echo ""
-echo "📝 當前用戶代碼 (user.c):"
+echo "📝 Current user code (user.c):"
 cat user.c
 
 echo ""
-echo "⚙️  當前配置 (config.json):"
+echo "⚙️  Current configuration (config.json):"
 cat config.json
 
 echo ""
-echo "🚀 運行測試..."
+echo "🚀 Running test..."
 ./harness config.json result.json
 
 echo ""
-echo "📊 測試結果:"
+echo "📊 Test result:"
 cat result.json | jq '.' 2>/dev/null || cat result.json
 
 status=$(cat result.json | grep status | grep -o 'SUCCESS\|ERROR')
 if [ "$status" = "SUCCESS" ]; then
     echo ""
-    echo "✅ 測試通過！"
+    echo "✅ Test passed!"
 else
     echo ""
-    echo "❌ 測試失敗"
+    echo "❌ Test failed"
 fi

@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# 純淨版
+# Clean version
 
 make build
 

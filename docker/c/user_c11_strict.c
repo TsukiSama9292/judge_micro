@@ -1,7 +1,7 @@
 #include <stdio.h>
 
 int solve(int *a, int *b) {
-    // C11 特性：匿名結構體
+    // C11 feature: anonymous struct
     struct {
         union {
             int x;

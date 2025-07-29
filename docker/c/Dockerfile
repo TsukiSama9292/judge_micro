@@ -10,5 +10,5 @@ WORKDIR /app
 
 COPY * /app/
 
-# 重新編譯 harness 以確保與容器內 GLIBC 版本兼容
+# Recompile harness to ensure compatibility with container's GLIBC version
 RUN make clean && make build

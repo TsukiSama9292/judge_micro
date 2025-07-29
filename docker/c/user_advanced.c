@@ -1,4 +1,4 @@
-// 進階範例：多參數計算（最大公約數和最小公倍數）
+// Advanced example: Multi-parameter calculation (Greatest Common Divisor and Least Common Multiple)
 int gcd(int a, int b) {
     while (b != 0) {
         int temp = b;
@@ -9,10 +9,10 @@ int gcd(int a, int b) {
 }
 
 int solve(int *num1, int *num2, int *gcd_result, int *lcm_result) {
-    printf("計算 %d 和 %d 的最大公約數和最小公倍數\n", *num1, *num2);
+    printf("Calculating GCD and LCM of %d and %d\n", *num1, *num2);
     
     if (*num1 <= 0 || *num2 <= 0) {
-        printf("錯誤：輸入必須是正整數\n");
+        printf("Error: Input must be positive integers\n");
         return -1;
     }
     

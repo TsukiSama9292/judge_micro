@@ -1,9 +1,9 @@
-// 階乘範例：計算輸入數字的階乘
+// Factorial example: Calculate factorial of input number
 int solve(int *n, int *factorial) {
-    printf("計算 %d 的階乘\n", *n);
+    printf("Calculating factorial of %d\n", *n);
     
     if (*n < 0) {
-        printf("錯誤：階乘不能計算負數\n");
+        printf("Error: Factorial cannot be calculated for negative numbers\n");
         *factorial = -1;
         return -1;
     }
@@ -13,6 +13,6 @@ int solve(int *n, int *factorial) {
         *factorial *= i;
     }
     
-    printf("結果: %d! = %d\n", *n, *factorial);
+    printf("Result: %d! = %d\n", *n, *factorial);
     return 0;
 }
