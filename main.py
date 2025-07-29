@@ -92,6 +92,7 @@ class APIRunner:
             # Timeout settings
             "--timeout", "120",
             "--keep-alive", "30",
+            "--graceful-timeout", "30",
             # Request limits
             "--max-requests", "1000",
             "--max-requests-jitter", "50",
@@ -99,19 +100,38 @@ class APIRunner:
             "--limit-request-fields", "100",
             # Process settings
             "--preload",
-            # Logging
+            # Logging configuration (防止重複日誌錯誤)
             "--log-level", setting.JUDGE_LOG_LEVEL.lower(),
             "--access-logfile", "-",
             "--error-logfile", "-",
+            "--capture-output",
+            "--enable-stdio-inheritance",
             "--access-logformat", '%(h)s %(l)s %(u)s %(t)s "%(r)s" %(s)s %(b)s "%(f)s" "%(a)s" %(D)s',
         ]
             
         try:
-            subprocess.run(cmd, check=True)
+            # 使用 Popen 來更好地控制進程
+            process = subprocess.Popen(cmd)
+            process.wait()
         except KeyboardInterrupt:
-            print("\n⏹️  Server stopped")
+            print("\n⏹️  Server stopping gracefully...")
+            try:
+                # 給進程一些時間來正常關閉
+                process.terminate()
+                process.wait(timeout=5)
+            except subprocess.TimeoutExpired:
+                # 如果進程沒有在 5 秒內關閉，強制終止
+                process.kill()
+                process.wait()
+            except Exception:
+                # 忽略關閉過程中的異常，避免重複日誌錯誤
+                pass
+            print("⏹️  Server stopped")
         except subprocess.CalledProcessError as e:
             print(f"❌ Startup failed: {e}")
+            sys.exit(1)
+        except Exception as e:
+            print(f"❌ Unexpected error: {e}")
             sys.exit(1)
 
 

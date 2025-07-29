@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "judge_micro"
-version = "0.0.2.dev2"
+version = "0.0.2"
 requires-python = ">3.8, <3.14"
 description = ""
 readme = "README.md"
@@ -29,6 +29,7 @@ dependencies = [
   "uvicorn[standard]",
   "gunicorn",
   "python-multipart",
+  "httpx",
   
 ]
 
