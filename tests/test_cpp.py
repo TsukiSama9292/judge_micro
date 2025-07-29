@@ -1,7 +1,7 @@
 import pytest
 
 def test_c():
-    from judge_micro.services.efficient import judge_micro
+    from judge_micro.services.micro import judge_micro
     efficient_cpp_code = '''#include <iostream>
 
 int solve(int &a, int &b) {
@@ -30,7 +30,7 @@ int solve(int &a, int &b) {
         config=config,
         show_logs=True
     )
-    print("C++ 測試結果:\n", result_cpp_efficient)
+    print("C++ result:\n", result_cpp_efficient)
     assert result_cpp_efficient.get('status').lower() == 'success'
     assert result_cpp_efficient.get('match') == True
 

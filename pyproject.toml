@@ -1,10 +1,10 @@
 [build-system]
-requires = ["setuptools>=61.0"]
-build-backend = "setuptools.build_meta"
+requires = ["hatchling>=1.26"]
+build-backend = "hatchling.build"
 
 [project]
 name = "judge_micro"
-version = "0.0.2.dev0"
+version = "0.0.2.dev1"
 requires-python = ">3.8, <3.14"
 description = ""
 readme = "README.md"
@@ -14,45 +14,40 @@ license-files = ["LICENSE"]
 authors = [
   { name = "Xuan‑You Lin", email = "a0985821880@gmail.com" }
 ]
-
 maintainers = [
   { name = "Xuan‑You Lin", email = "a0985821880@gmail.com" }
 ]
 
 dependencies = [
-    "setuptools",
-    "ipykernel",
-    "ipywidgets",
-    "nest_asyncio",
-    "jupyterlab_widgets",
-    "pydantic",
-    "python-dotenv",
-    "docker",
-    "paramiko",
+  "pydantic",
+  "python-dotenv",
+  "docker",
+  "paramiko",
 ]
-
-[tool.setuptools]
-package-dir = { "" = "src" }
-
-[tool.setuptools.packages.find]
-where = ["src"]
 
 [project.optional-dependencies]
 dev = [
-    "pytest",
-    "pytest-cov"
+  "pytest",
+  "pytest-cov",
+]
+
+[dependency-groups]
+test = [
+  "pytest",
+  "pytest-cov",
+]
+dev = [
+  { include-group = "test" },
+  "ipykernel",
+  "ipywidgets",
+  "nest_asyncio",
+  "jupyterlab_widgets",
 ]
 
 [tool.pytest.ini_options]
 minversion = "7.0"
 addopts = "-ra -q"
 testpaths = [
-    "tests"
+  "tests"
 ]
 python_files = "test_*.py"
-
-[[tool.uv.index]]
-name = "testpypi"
-url = "https://test.pypi.org/simple/"
-publish-url = "https://test.pypi.org/legacy/"
-explicit = true

@@ -109,13 +109,6 @@ cd judge_micro
 pip install -e .
 ```
 
-### MUST: Pull C, C++ Judge Micro Image
-
-```bash
-docker pull tsukisama9292/judge_micro:c
-docker pull tsukisama9292/judge_micro:c_plus_plus
-```
-
 ## 🌍 Use Cases
 
 - **Online Judge Platforms**: Competitive programming websites

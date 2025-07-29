@@ -10,12 +10,11 @@ import docker
 from docker.errors import DockerException
 from judge_micro.docker.client import default_docker_client
 from judge_micro.config.settings import setting
+from judge_micro.docker.images import DOCKER_IMAGES
+
 class JudgeMicroservice:
     
-    DOCKER_IMAGES = {
-        'c': 'tsukisama9292/judge_micro:c',
-        'cpp': 'tsukisama9292/judge_micro:c_plus_plus'
-    }
+    DOCKER_IMAGES = DOCKER_IMAGES
     
     def __init__(self, docker_client=None, continue_on_timeout: bool = None):
         """Initialize Docker client
@@ -35,7 +34,7 @@ class JudgeMicroservice:
             
             # Use provided value or default from settings
             self.continue_on_timeout = continue_on_timeout if continue_on_timeout is not None else setting.continue_on_timeout
-            print("🚀 Efficient microservice is ready")
+            print("🚀 Judge microservice is ready")
         except DockerException as e:
             print(f"❌ Docker client initialization failed: {e}")
             raise
@@ -362,6 +361,6 @@ class JudgeMicroservice:
         
         return results
 
-# Create efficient microservice instance
-print("🚀 Creating efficient microservice instance...")
+# Create judge microservice instance
+print("🚀 Creating judge microservice instance...")
 judge_micro = JudgeMicroservice()

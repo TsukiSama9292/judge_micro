@@ -1,21 +1,3 @@
-"""
-Docker SSH 遠端連接示例
-======================
-
-這個示例展示如何使用 Python 的 Docker 套件通過 SSH 連接到遠端的 Linux 系統，
-並在遠端機器上管理 Docker 容器。
-
-安裝需求：
-```bash
-pip install docker paramiko
-```
-
-或使用項目依賴：
-```bash
-pip install -e .  # 已包含 docker 和 paramiko
-```
-"""
-
 import docker
 import paramiko
 import os
@@ -25,19 +7,19 @@ import json
 
 
 class RemoteDockerManager:
-    """遠端 Docker 管理器 - 通過 SSH 連接管理遠端 Docker"""
+    """Remote Docker Manager - Manage remote Docker through SSH connection"""
     
     def __init__(self, host: str, username: str, key_path: Optional[str] = None, 
                  password: Optional[str] = None, port: int = 22):
         """
-        初始化遠端 Docker 連接
+        Initialize remote Docker connection
         
         Args:
-            host: 遠端主機 IP 或域名
-            username: SSH 用戶名
-            key_path: SSH 私鑰路徑（優先使用）
-            password: SSH 密碼（當沒有私鑰時使用）
-            port: SSH 端口，默認 22
+            host: Remote host IP or domain name
+            username: SSH username
+            key_path: SSH private key path (preferred)
+            password: SSH password (used when no private key)
+            port: SSH port, default 22
         """
         self.host = host
         self.username = username
@@ -45,21 +27,21 @@ class RemoteDockerManager:
         self.ssh_client = None
         self.docker_client = None
         
-        # 建立 SSH 連接
+        # Establish SSH connection
         self._connect_ssh(key_path, password)
         
-        # 建立 Docker 連接
+        # Establish Docker connection
         self._connect_docker()
     
     def _connect_ssh(self, key_path: Optional[str], password: Optional[str]):
-        """建立 SSH 連接"""
+        """Establish SSH connection"""
         try:
             self.ssh_client = paramiko.SSHClient()
             self.ssh_client.set_missing_host_key_policy(paramiko.AutoAddPolicy())
             
             if key_path and os.path.exists(key_path):
-                # 使用私鑰連接
-                print(f"🔑 使用私鑰連接到 {self.username}@{self.host}:{self.port}")
+                # Connect using private key
+                print(f"🔑 Connecting using private key to {self.username}@{self.host}:{self.port}")
                 self.ssh_client.connect(
                     hostname=self.host,
                     username=self.username,
@@ -68,8 +50,8 @@ class RemoteDockerManager:
                     timeout=10
                 )
             elif password:
-                # 使用密碼連接
-                print(f"🔒 使用密碼連接到 {self.username}@{self.host}:{self.port}")
+                # Connect using password
+                print(f"🔒 Connecting using password to {self.username}@{self.host}:{self.port}")
                 self.ssh_client.connect(
                     hostname=self.host,
                     username=self.username,
@@ -78,10 +60,10 @@ class RemoteDockerManager:
                     timeout=10
                 )
             else:
-                # 嘗試使用默認私鑰
+                # Try using default private key
                 default_key = os.path.expanduser("~/.ssh/id_rsa")
                 if os.path.exists(default_key):
-                    print(f"🔑 使用默認私鑰連接到 {self.username}@{self.host}:{self.port}")
+                    print(f"🔑 Connecting using default private key to {self.username}@{self.host}:{self.port}")
                     self.ssh_client.connect(
                         hostname=self.host,
                         username=self.username,
@@ -90,66 +72,66 @@ class RemoteDockerManager:
                         timeout=10
                     )
                 else:
-                    raise ValueError("需要提供私鑰路徑或密碼")
+                    raise ValueError("Private key path or password is required")
             
-            print("✅ SSH 連接成功")
+            print("✅ SSH connection successful")
             
         except Exception as e:
-            print(f"❌ SSH 連接失敗: {e}")
+            print(f"❌ SSH connection failed: {e}")
             raise
     
     def _connect_docker(self):
-        """建立遠端 Docker 連接"""
+        """Establish remote Docker connection"""
         try:
-            # 檢查遠端是否有 Docker
+            # Check if remote has Docker
             stdin, stdout, stderr = self.ssh_client.exec_command("docker --version")
             exit_code = stdout.channel.recv_exit_status()
             
             if exit_code != 0:
                 error = stderr.read().decode().strip()
-                raise Exception(f"遠端系統沒有安裝 Docker 或 Docker 服務未啟動: {error}")
+                raise Exception(f"Remote system doesn't have Docker installed or Docker service is not running: {error}")
             
             docker_version = stdout.read().decode().strip()
-            print(f"🐳 遠端 Docker 版本: {docker_version}")
+            print(f"🐳 Remote Docker version: {docker_version}")
             
-            # 嘗試多種連接方式
+            # Try multiple connection methods
             connection_methods = [
-                # 方法1：SSH 隧道連接（推薦）
+                # Method 1: SSH tunnel connection (recommended)
                 f"ssh://{self.username}@{self.host}:{self.port}",
-                # 方法2：如果是本地回環，嘗試直接連接
+                # Method 2: If localhost, try direct connection
                 "unix://var/run/docker.sock" if self.host in ['127.0.0.1', 'localhost'] else None,
-                # 方法3：TCP 連接（如果 Docker daemon 暴露了端口）
+                # Method 3: TCP connection (if Docker daemon exposed port)
                 f"tcp://{self.host}:2376" if self.host not in ['127.0.0.1', 'localhost'] else None,
                 f"tcp://{self.host}:2375" if self.host not in ['127.0.0.1', 'localhost'] else None,
             ]
             
-            # 過濾掉 None 值
+            # Filter out None values
             connection_methods = [method for method in connection_methods if method is not None]
             
             last_error = None
             for method in connection_methods:
                 try:
-                    print(f"🔄 嘗試連接方式: {method}")
+                    print(f"🔄 Trying connection method: {method}")
                     
-                    # 創建 Docker 客戶端
+                    # Create Docker client
                     if method.startswith("ssh://"):
-                        # SSH 連接需要特殊處理
+                        # SSH connection needs special handling
                         self.docker_client = docker.DockerClient(base_url=method)
                     else:
                         self.docker_client = docker.DockerClient(base_url=method)
                     
-                    # 測試連接
+                    # Test connection
                     info = self.docker_client.info()
-                    print(f"✅ 遠端 Docker 連接成功 (使用: {method})")
-                    print(f"   系統: {info.get('OperatingSystem', 'Unknown')}")
-                    print(f"   架構: {info.get('Architecture', 'Unknown')}")
-                    print(f"   容器數: {info.get('Containers', 0)}")
-                    print(f"   映像數: {info.get('Images', 0)}")
-                    return  # 成功連接，退出方法
+                    print(f"✅ Remote Docker connection successful (using: {method})")
+                    print(f"   System: {info.get('OperatingSystem', 'Unknown')}")
+                    print(f"   Architecture: {info.get('Architecture', 'Unknown')}")
+                    print(f"   Containers: {info.get('Containers', 0)}")
+                    print(f"   Images: {info.get('Images', 0)}")
+                    return  # Successfully connected, exit method
                     
                 except Exception as e:
                     last_error = e
-                    print(f"   ❌ 連接失敗: {e}")
+                    print(f"   ❌ Connection failed: {e}")
                     if self.docker_client:
                         try:
                             self.docker_client.close()
@@ -158,19 +140,19 @@ class RemoteDockerManager:
                         self.docker_client = None
                     continue
             
-            # 所有方法都失敗了
-            raise Exception(f"所有 Docker 連接方法都失敗了。最後錯誤: {last_error}")
+            # All methods failed
+            raise Exception(f"All Docker connection methods failed. Last error: {last_error}")
             
         except Exception as e:
-            print(f"❌ 遠端 Docker 連接失敗: {e}")
-            print("💡 確保遠端系統已安裝 Docker 且當前用戶有權限訪問")
-            print("💡 如果是遠端連接，可能需要配置 Docker daemon 的 TCP 端口")
+            print(f"❌ Remote Docker connection failed: {e}")
+            print("💡 Ensure Docker is installed on remote system and current user has access permissions")
+            print("💡 For remote connection, may need to configure Docker daemon TCP port")
             raise
     
     def execute_command(self, command: str) -> Dict[str, Any]:
-        """在遠端執行 Shell 命令"""
+        """Execute shell command on remote host"""
         try:
-            print(f"🔄 執行遠端命令: {command}")
+            print(f"🔄 Executing remote command: {command}")
             stdin, stdout, stderr = self.ssh_client.exec_command(command)
             
             exit_code = stdout.channel.recv_exit_status()
@@ -186,18 +168,18 @@ class RemoteDockerManager:
             }
             
             if exit_code == 0:
-                print(f"✅ 命令執行成功")
+                print(f"✅ Command executed successfully")
                 if output:
-                    print(f"輸出: {output}")
+                    print(f"Output: {output}")
             else:
-                print(f"❌ 命令執行失敗 (退出碼: {exit_code})")
+                print(f"❌ Command execution failed (exit code: {exit_code})")
                 if error:
-                    print(f"錯誤: {error}")
+                    print(f"Error: {error}")
             
             return result
             
         except Exception as e:
-            print(f"❌ 命令執行異常: {e}")
+            print(f"❌ Command execution exception: {e}")
             return {
                 "command": command,
                 "exit_code": -1,
@@ -207,12 +189,12 @@ class RemoteDockerManager:
             }
     
     def list_containers(self, all_containers: bool = False) -> list:
-        """列出遠端容器"""
-        print(f"📦 遠端容器列表 ({'全部' if all_containers else '運行中'}):")
+        """List remote containers"""
+        print(f"📦 Remote containers list ({'all' if all_containers else 'running'}):")
         
-        # 直接使用 SSH 命令獲取容器信息（更可靠）
+        # Use SSH command directly to get container info (more reliable)
         try:
-            # 使用 docker ps 命令，-a 表示顯示所有容器（包括停止的）
+            # Use docker ps command, -a means show all containers (including stopped ones)
             if all_containers:
                 cmd = "docker ps -a --format 'table {{.Names}}\\t{{.ID}}\\t{{.Image}}\\t{{.Status}}\\t{{.Ports}}'"
             else:
@@ -220,17 +202,17 @@ class RemoteDockerManager:
             
             result = self.execute_command(cmd)
             if not result["success"]:
-                print(f"❌ 獲取容器列表失敗: {result['error']}")
+                print(f"❌ Failed to get container list: {result['error']}")
                 return []
             
             lines = result["output"].split('\n')
             if len(lines) <= 1:
-                print("   (無容器)")
+                print("   (No containers)")
                 return []
             
-            # 解析容器信息
+            # Parse container information
             container_info = []
-            for line in lines[1:]:  # 跳過標題行
+            for line in lines[1:]:  # Skip header line
                 if line.strip():
                     parts = line.split('\t')
                     if len(parts) >= 4:
@@ -240,30 +222,30 @@ class RemoteDockerManager:
                         status = parts[3].strip()
                         ports = parts[4].strip() if len(parts) > 4 else ""
                         
-                        # 添加狀態圖示
+                        # Add status icon
                         status_lower = status.lower()
                         if 'up' in status_lower and 'minute' in status_lower:
-                            status_icon = '🟢'  # 運行中
+                            status_icon = '🟢'  # Running
                         elif 'up' in status_lower:
-                            status_icon = '🟢'  # 運行中
+                            status_icon = '🟢'  # Running
                         elif 'exited (0)' in status_lower:
-                            status_icon = '⚫'  # 正常退出
+                            status_icon = '⚫'  # Normal exit
                         elif 'exited' in status_lower:
-                            status_icon = '🔴'  # 異常退出
+                            status_icon = '🔴'  # Abnormal exit
                         elif 'stopped' in status_lower:
-                            status_icon = '🔴'  # 停止
+                            status_icon = '🔴'  # Stopped
                         elif 'paused' in status_lower:
-                            status_icon = '🟡'  # 暫停
+                            status_icon = '🟡'  # Paused
                         elif 'created' in status_lower:
-                            status_icon = '🔵'  # 已創建
+                            status_icon = '🔵'  # Created
                         elif 'restarting' in status_lower:
-                            status_icon = '🔄'  # 重啟中
+                            status_icon = '🔄'  # Restarting
                         elif 'removing' in status_lower:
-                            status_icon = '🗑️'  # 刪除中
+                            status_icon = '🗑️'  # Removing
                         elif 'dead' in status_lower:
-                            status_icon = '💀'  # 死亡
+                            status_icon = '💀'  # Dead
                         else:
-                            status_icon = '❓'  # 未知狀態
+                            status_icon = '❓'  # Unknown status
                         
                         info = {
                             "id": container_id,
@@ -274,28 +256,28 @@ class RemoteDockerManager:
                         }
                         container_info.append(info)
                         
-                        # 格式化顯示
+                        # Formatted display
                         print(f"   {status_icon} {name} ({container_id[:12]}) - {image}")
-                        print(f"      狀態: {status}")
+                        print(f"      Status: {status}")
                         if ports:
-                            print(f"      端口: {ports}")
+                            print(f"      Ports: {ports}")
             
             return container_info
             
         except Exception as e:
-            print(f"❌ 獲取容器列表失敗: {e}")
+            print(f"❌ Failed to get container list: {e}")
             
-            # 最後備用方法：嘗試使用 Docker Python API
+            # Last fallback method: try using Docker Python API
             try:
-                print("💡 嘗試使用 Docker Python API...")
+                print("💡 Trying Docker Python API...")
                 
-                # 不傳遞參數，直接調用
+                # Call directly without passing parameters
                 if all_containers:
-                    # 嘗試不同的方式獲取所有容器
+                    # Try different ways to get all containers
                     containers = self.docker_client.containers.list()
                     all_containers_list = []
                     try:
-                        # 嘗試獲取已停止的容器
+                        # Try to get stopped containers
                         stopped_containers = self.docker_client.api.containers(all=True)
                         containers = [self.docker_client.containers.get(c['Id']) for c in stopped_containers]
                     except:
@@ -304,7 +286,7 @@ class RemoteDockerManager:
                     containers = self.docker_client.containers.list()
                 
                 if not containers:
-                    print("   (無容器)")
+                    print("   (No containers)")
                     return []
                 
                 container_info = []
@@ -320,22 +302,22 @@ class RemoteDockerManager:
                         container_info.append(info)
                         print(f"   📦 {info['name']} ({info['id']}) - {info['image']} - {info['status']}")
                     except Exception as container_error:
-                        print(f"   • 容器資訊獲取失敗: {container_error}")
+                        print(f"   • Failed to get container info: {container_error}")
                 
                 return container_info
                 
             except Exception as api_error:
-                print(f"   Docker API 備用方法也失敗: {api_error}")
+                print(f"   Docker API fallback method also failed: {api_error}")
                 return []
     
     def list_images(self) -> list:
-        """列出遠端映像"""
+        """List remote images"""
         try:
             images = self.docker_client.images.list()
-            print(f"🖼️  遠端映像列表:")
+            print(f"🖼️  Remote images list:")
             
             if not images:
-                print("   (無映像)")
+                print("   (No images)")
                 return []
             
             image_info = []
@@ -343,7 +325,7 @@ class RemoteDockerManager:
                 try:
                     tags = image.tags if hasattr(image, 'tags') and image.tags else ["<none>:<none>"]
                     
-                    # 安全地獲取大小
+                    # Safely get size
                     size_mb = 0
                     if hasattr(image, 'attrs') and 'Size' in image.attrs:
                         size_mb = image.attrs['Size'] / 1024 / 1024
@@ -357,22 +339,22 @@ class RemoteDockerManager:
                     
                     print(f"   • {tags[0]} ({info['id']}) - {info['size']}")
                 except Exception as image_error:
-                    print(f"   • 映像資訊獲取失敗: {image_error}")
+                    print(f"   • Failed to get image info: {image_error}")
                     continue
             
             return image_info
             
         except Exception as e:
-            print(f"❌ 獲取映像列表失敗: {e}")
-            print(f"   詳細錯誤: {type(e).__name__}: {str(e)}")
+            print(f"❌ Failed to get images list: {e}")
+            print(f"   Detailed error: {type(e).__name__}: {str(e)}")
             return []
     
     def run_container(self, image: str, command: str = None, **kwargs) -> Optional[str]:
-        """在遠端運行容器"""
+        """Run container on remote host"""
         try:
-            print(f"🚀 在遠端運行容器: {image}")
+            print(f"🚀 Running container on remote host: {image}")
             
-            # 設置默認參數
+            # Set default parameters
             run_kwargs = {
                 "detach": True,
                 "remove": False,
@@ -384,74 +366,74 @@ class RemoteDockerManager:
             
             container = self.docker_client.containers.run(image, **run_kwargs)
             
-            print(f"✅ 容器啟動成功: {container.name} ({container.short_id})")
+            print(f"✅ Container started successfully: {container.name} ({container.short_id})")
             return container.id
             
         except Exception as e:
-            print(f"❌ 容器啟動失敗: {e}")
+            print(f"❌ Container startup failed: {e}")
             return None
     
     def stop_container(self, container_id_or_name: str) -> bool:
-        """停止遠端容器"""
+        """Stop remote container"""
         try:
             container = self.docker_client.containers.get(container_id_or_name)
             container.stop()
-            print(f"🛑 容器已停止: {container.name}")
+            print(f"🛑 Container stopped: {container.name}")
             return True
             
         except Exception as e:
-            print(f"❌ 停止容器失敗: {e}")
+            print(f"❌ Failed to stop container: {e}")
             return False
     
     def remove_container(self, container_id_or_name: str, force: bool = False) -> bool:
-        """刪除遠端容器"""
+        """Remove remote container"""
         try:
             container = self.docker_client.containers.get(container_id_or_name)
             container.remove(force=force)
-            print(f"🗑️  容器已刪除: {container.name}")
+            print(f"🗑️  Container removed: {container.name}")
             return True
             
         except Exception as e:
-            print(f"❌ 刪除容器失敗: {e}")
+            print(f"❌ Failed to remove container: {e}")
             return False
     
     def pull_image(self, image: str) -> bool:
-        """拉取遠端映像"""
+        """Pull remote image"""
         try:
-            print(f"📥 拉取映像: {image}")
+            print(f"📥 Pulling image: {image}")
             image_obj = self.docker_client.images.pull(image)
-            print(f"✅ 映像拉取成功: {image}")
+            print(f"✅ Image pulled successfully: {image}")
             return True
             
         except Exception as e:
-            print(f"❌ 映像拉取失敗: {e}")
+            print(f"❌ Image pull failed: {e}")
             return False
     
     def get_system_info(self) -> Dict[str, Any]:
-        """獲取遠端系統資訊"""
+        """Get remote system information"""
         try:
-            # Docker 資訊
+            # Docker information
             docker_info = self.docker_client.info()
             
-            # 系統資訊
+            # System information
             system_info = {}
             
-            # CPU 資訊
+            # CPU information
             result = self.execute_command("nproc")
             if result["success"]:
                 system_info["cpu_cores"] = int(result["output"])
             
-            # 記憶體資訊
+            # Memory information
             result = self.execute_command("free -h")
             if result["success"]:
                 system_info["memory_info"] = result["output"]
             
-            # 磁碟資訊
+            # Disk information
             result = self.execute_command("df -h /")
             if result["success"]:
                 system_info["disk_info"] = result["output"]
             
-            # 系統負載
+            # System load
             result = self.execute_command("uptime")
             if result["success"]:
                 system_info["uptime"] = result["output"]
@@ -462,117 +444,15 @@ class RemoteDockerManager:
             }
             
         except Exception as e:
-            print(f"❌ 獲取系統資訊失敗: {e}")
+            print(f"❌ Failed to get system information: {e}")
             return {}
     
     def close(self):
-        """關閉連接"""
+        """Close connections"""
         if self.docker_client:
             self.docker_client.close()
-            print("🔒 Docker 連接已關閉")
+            print("🔒 Docker connection closed")
         
         if self.ssh_client:
             self.ssh_client.close()
-            print("🔒 SSH 連接已關閉")
-
-
-def main():
-    """主函數 - 演示用法"""
-    print("🌐 Docker SSH 遠端連接示例")
-    print("=" * 40)
-    
-    # 配置連接參數
-    config = {
-        "host": "127.0.0.1",  # 遠端主機 IP
-        "username": "tsukisama9292",  # SSH 用戶名
-        "key_path": os.path.expanduser("~/.ssh/id_rsa"),  # SSH 私鑰路徑
-        # "password": "your_password",  # SSH 密碼（可選）
-        "port": 22  # SSH 端口
-    }
-    
-    # 檢查配置
-    print("🔧 連接配置:")
-    print(f"   主機: {config['host']}")
-    print(f"   用戶: {config['username']}")
-    print(f"   端口: {config['port']}")
-    
-    if config.get("key_path") and os.path.exists(config["key_path"]):
-        print(f"   私鑰: {config['key_path']}")
-    elif config.get("password"):
-        print("   認證: 密碼")
-    else:
-        print("⚠️  未找到私鑰或密碼，將嘗試默認私鑰")
-    
-    print()
-    
-    try:
-        # 創建遠端 Docker 管理器
-        remote_docker = RemoteDockerManager(**config)
-        
-        print("\n" + "=" * 40)
-        print("📊 系統資訊")
-        print("=" * 40)
-        
-        # 獲取系統資訊
-        info = remote_docker.get_system_info()
-        if info:
-            print("系統資源:")
-            if "cpu_cores" in info["system"]:
-                print(f"   CPU 核心: {info['system']['cpu_cores']}")
-            if "uptime" in info["system"]:
-                print(f"   系統運行時間: {info['system']['uptime']}")
-        
-        print("\n" + "=" * 40)
-        print("🐳 Docker 管理")
-        print("=" * 40)
-        
-        # 列出現有容器
-        remote_docker.list_containers(all_containers=True)
-        
-        print()
-        
-        # 列出現有映像
-        remote_docker.list_images()
-        
-        print("\n" + "=" * 40)
-        print("🧪 測試容器操作")
-        print("=" * 40)
-        
-        # 拉取測試映像
-        test_image = "alpine:latest"
-        if remote_docker.pull_image(test_image):
-            
-            # 運行測試容器
-            container_id = remote_docker.run_container(
-                image=test_image,
-                command="echo 'Hello from remote Docker!'",
-                name="ssh_test_container"
-            )
-            
-            if container_id:
-                # 等待容器執行完成
-                import time
-                time.sleep(2)
-                
-                # 查看容器狀態
-                remote_docker.list_containers(all_containers=True)
-                
-                # 清理測試容器
-                remote_docker.remove_container("ssh_test_container", force=True)
-        
-        print("\n✅ 演示完成")
-        
-    except Exception as e:
-        print(f"❌ 演示失敗: {e}")
-        return 1
-    
-    finally:
-        # 關閉連接
-        if 'remote_docker' in locals():
-            remote_docker.close()
-    
-    return 0
-
-
-if __name__ == "__main__":
-    exit(main())
+            print("🔒 SSH connection closed")
