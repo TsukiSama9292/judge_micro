@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "judge_micro"
-version = "0.0.2.dev1"
+version = "0.0.2.dev2"
 requires-python = ">3.8, <3.14"
 description = ""
 readme = "README.md"
@@ -23,18 +23,20 @@ dependencies = [
   "python-dotenv",
   "docker",
   "paramiko",
-]
-
-[project.optional-dependencies]
-dev = [
-  "pytest",
-  "pytest-cov",
+  
+  # Web Framework
+  "fastapi",
+  "uvicorn[standard]",
+  "gunicorn",
+  "python-multipart",
+  
 ]
 
 [dependency-groups]
 test = [
   "pytest",
   "pytest-cov",
+  "pytest-asyncio",
 ]
 dev = [
   { include-group = "test" },
