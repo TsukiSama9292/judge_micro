@@ -48,5 +48,5 @@ clean:
 # Documentation server
 docs:
 	@echo "📚 Starting API documentation server..."
-	@echo "Visit: http://localhost:60280/docs"
+	@echo "Visit: http://localhost:8000/docs"
 	@python3 main.py dev

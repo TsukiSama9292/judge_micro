@@ -81,7 +81,7 @@ All settings are configured in `.env` or `.env.local` files:
 ```bash
 # Server settings
 JUDGE_HOST=0.0.0.0
-JUDGE_PORT=60280
+JUDGE_PORT=8000
 JUDGE_WORKERS=16
 JUDGE_LOG_LEVEL=info
 
@@ -109,13 +109,13 @@ DOCKER_SSH_KEY_PATH=~/.ssh/id_rsa
 ## 📚 API Documentation
 
 ### Development Mode
-- **Swagger UI**: http://localhost:60280/docs
-- **Redoc**: http://localhost:60280/redoc
-- **OpenAPI JSON**: http://localhost:60280/openapi.json
+- **Swagger UI**: http://localhost:8000/docs
+- **Redoc**: http://localhost:8000/redoc
+- **OpenAPI JSON**: http://localhost:8000/openapi.json
 
 ### Production Mode
 - Documentation is disabled for security
-- Only OpenAPI JSON endpoint available: http://localhost:60280/openapi.json
+- Only OpenAPI JSON endpoint available: http://localhost:8000/openapi.json
 
 ## 🛠️ Common Commands
 
@@ -131,7 +131,7 @@ python3 main.py prod --no-check
 make clean
 
 # Check service health
-curl http://localhost:60280/health
+curl http://localhost:8000/health
 
 # Stop running server
 # For development: Ctrl+C

@@ -46,7 +46,7 @@ class Settings(BaseSettings):
     DOCKER_SSH_PASSWORD: str = os.getenv("DOCKER_SSH_PASSWORD", "password")
 
     JUDGE_HOST: str = os.getenv("JUDGE_HOST", "0.0.0.0")
-    JUDGE_PORT: int = int(os.getenv("JUDGE_PORT", 60280))
+    JUDGE_PORT: int = int(os.getenv("JUDGE_PORT", 8000))
     JUDGE_WORKERS: int = int(os.getenv("JUDGE_WORKERS", 16))
     JUDGE_RELOAD: int = int(os.getenv("JUDGE_RELOAD", 0))
     JUDGE_LOG_DIR: str = os.getenv("JUDGE_LOG_DIR", "./logs")
