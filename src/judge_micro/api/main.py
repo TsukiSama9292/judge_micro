@@ -18,11 +18,7 @@ def get_app(debug: bool = None) -> FastAPI:
             title="Judge Micro API",
             service_name="judge_micro_api",
             description="API for Judge Micro service",
-            version="0.0.2.dev2",
-            openapi_tags=[
-                {"name": "heartbeat", "description": "Heartbeat API"},
-                {"name": "judge", "description": "Code Judge API"},
-            ],
+            version="0.0.3.dev0",
             license_info={
                 "name": "Apache License 2.0",
             },
@@ -36,16 +32,12 @@ def get_app(debug: bool = None) -> FastAPI:
             title="Judge Micro API",
             service_name="judge_micro_api",
             description="API for Judge Micro service",
-            version="0.0.2.dev2",
-            openapi_tags=[
-                {"name": "heartbeat", "description": "Heartbeat API"},
-                {"name": "judge", "description": "Code Judge API"},
-            ],
+            version="0.0.3.dev0",
             license_info={
                 "name": "Apache License 2.0",
             },
-            docs_url=None,
-            redoc_url=None,
+            docs_url="/docs",
+            redoc_url="/redoc",
             openapi_url="/openapi.json",
             debug=False,
         )
