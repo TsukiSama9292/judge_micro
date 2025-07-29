@@ -1041,7 +1041,7 @@ wheels = [
 
 [[package]]
 name = "judge-micro"
-version = "0.0.3.dev0"
+version = "0.0.3.dev2"
 source = { editable = "." }
 dependencies = [
     { name = "docker" },

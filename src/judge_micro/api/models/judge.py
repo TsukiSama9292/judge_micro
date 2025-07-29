@@ -176,6 +176,36 @@ class BatchJudgeRequest(BaseModel):
     show_progress: Optional[bool] = Field(True, description="Whether to show progress")
 
 
+class OptimizedBatchJudgeRequest(BaseModel):
+    """Optimized batch judge evaluation request for same language and user code with different test configurations"""
+    language: LanguageType = Field(..., description="Programming language")
+    user_code: str = Field(..., description="User source code", min_length=1, max_length=50000)
+    configs: List[Dict[str, Any]] = Field(..., description="List of test configurations", min_length=1, max_length=100)
+    compiler_settings: Optional[CompilerSettings] = Field(None, description="Compiler settings")
+    resource_limits: Optional[ResourceLimits] = Field(None, description="Resource limits")
+    show_progress: Optional[bool] = Field(True, description="Whether to show progress")
+
+    @field_validator('user_code')
+    @classmethod
+    def validate_user_code(cls, v):
+        """Validate user code for safety"""
+        dangerous_patterns = [
+            'system(', 'exec(', 'popen(', 'fork()', 'exit(',
+            '#include <sys/', 'unistd.h', 'signal.h',
+            'remove(', 'rename(', 'rmdir(', 'unlink(',
+            'chmod(', 'chown(', 'kill(', 'abort()',
+            '/dev/', '/proc/', '/sys/', '/etc/',
+            'sudo', 'su ', 'passwd'
+        ]
+        
+        v_lower = v.lower()
+        for pattern in dangerous_patterns:
+            if pattern in v_lower:
+                raise ValueError(f"Dangerous code pattern detected: {pattern}")
+        
+        return v
+
+
 class BatchJudgeResponse(BaseModel):
     """Batch judge evaluation response"""
     results: List[JudgeResponse] = Field(..., description="Judge evaluation result list")
@@ -315,4 +345,53 @@ int solve(std::vector<int> &nums, int &target) {
                 "compile_execution_time": 0.234
             },
             "error_details": "Syntax error: missing semicolon"
+        }
+
+    @staticmethod
+    def get_optimized_batch_example() -> Dict[str, Any]:
+        """Optimized batch evaluation example"""
+        return {
+            "language": "c",
+            "user_code": '''#include <stdio.h>
+int solve(int *a, int *b) {
+    *a = *a * 2;
+    *b = *b * 2 + 1;
+    printf("Test case: a=%d, b=%d\\n", *a, *b);
+    return 0;
+}''',
+            "configs": [
+                {
+                    "solve_params": [
+                        {"name": "a", "type": "int", "input_value": 3},
+                        {"name": "b", "type": "int", "input_value": 4}
+                    ],
+                    "expected": {"a": 6, "b": 9},
+                    "function_type": "int"
+                },
+                {
+                    "solve_params": [
+                        {"name": "a", "type": "int", "input_value": 5},
+                        {"name": "b", "type": "int", "input_value": 10}
+                    ],
+                    "expected": {"a": 10, "b": 21},
+                    "function_type": "int"
+                },
+                {
+                    "solve_params": [
+                        {"name": "a", "type": "int", "input_value": 1},
+                        {"name": "b", "type": "int", "input_value": 2}
+                    ],
+                    "expected": {"a": 2, "b": 5},
+                    "function_type": "int"
+                }
+            ],
+            "compiler_settings": {
+                "standard": "c11",
+                "flags": "-Wall -Wextra -O2"
+            },
+            "resource_limits": {
+                "compile_timeout": 30,
+                "execution_timeout": 10
+            },
+            "show_progress": True
         }

@@ -277,6 +277,98 @@ int solve(int *a) {
         assert "maximum_limits" in result
         assert "code_limits" in result
 
+    def test_optimized_batch_submit(self):
+        """Test optimized batch submission for same code with different configurations"""
+        request_data = {
+            "language": "c",
+            "user_code": '''#include <stdio.h>
+int solve(int *a, int *b) {
+    *a = *a * 2;
+    *b = *b * 2 + 1;
+    printf("Test: a=%d, b=%d\\n", *a, *b);
+    return 0;
+}''',
+            "configs": [
+                {
+                    "solve_params": [
+                        {"name": "a", "type": "int", "input_value": 3},
+                        {"name": "b", "type": "int", "input_value": 4}
+                    ],
+                    "expected": {"a": 6, "b": 9},
+                    "function_type": "int"
+                },
+                {
+                    "solve_params": [
+                        {"name": "a", "type": "int", "input_value": 5},
+                        {"name": "b", "type": "int", "input_value": 10}
+                    ],
+                    "expected": {"a": 10, "b": 21},
+                    "function_type": "int"
+                }
+            ],
+            "show_progress": False
+        }
+        
+        response = client.post("/judge/batch/optimized", json=request_data)
+        assert response.status_code == 200
+        
+        result = response.json()
+        assert "results" in result
+        assert "summary" in result
+        assert len(result["results"]) == 2
+        assert result["summary"]["total_tests"] == 2
+        
+        # Check for optimization indicators
+        summary = result["summary"]
+        assert "optimization_note" in summary or "compile_once" in summary
+
+    def test_optimized_batch_compilation_error(self):
+        """Test optimized batch with compilation error - should affect all tests"""
+        request_data = {
+            "language": "c",
+            "user_code": '''#include <stdio.h>
+int solve(int *a, int *b) {
+    *a = *a * 2  // Missing semicolon
+    *b = *b * 2 + 1;
+    return 0;
+}''',
+            "configs": [
+                {
+                    "solve_params": [
+                        {"name": "a", "type": "int", "input_value": 3},
+                        {"name": "b", "type": "int", "input_value": 4}
+                    ],
+                    "expected": {"a": 6, "b": 9},
+                    "function_type": "int"
+                }
+            ],
+            "show_progress": False
+        }
+        
+        response = client.post("/judge/batch/optimized", json=request_data)
+        assert response.status_code == 200
+        
+        result = response.json()
+        assert len(result["results"]) == 1
+        assert result["results"][0]["status"] in ["COMPILE_ERROR", "COMPILE_TIMEOUT"]
+        assert result["summary"]["error_count"] == 1
+
+    def test_get_optimized_batch_example(self):
+        """Test getting optimized batch example"""
+        response = client.get("/judge/examples/optimized-batch")
+        assert response.status_code == 200
+        
+        result = response.json()
+        assert "description" in result
+        assert "example" in result
+        assert "note" in result
+        
+        example = result["example"]
+        assert example["language"] in ["c", "cpp"]
+        assert "user_code" in example
+        assert "configs" in example
+        assert len(example["configs"]) > 0
+
 
 if __name__ == "__main__":
     pytest.main([__file__, "-v"])

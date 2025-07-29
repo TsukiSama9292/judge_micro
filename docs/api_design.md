@@ -17,6 +17,7 @@ The Judge Microservice API provides a complete code evaluation service that supp
 
 - `POST /judge/submit` - Submit single evaluation
 - `POST /judge/batch` - Batch evaluation
+- `POST /judge/batch/optimized` - Optimized batch evaluation for same code with different test configurations
 
 ### Example Endpoints
 
@@ -24,6 +25,7 @@ The Judge Microservice API provides a complete code evaluation service that supp
 - `GET /judge/examples/cpp` - C++ language examples
 - `GET /judge/examples/advanced` - Advanced examples
 - `GET /judge/examples/error` - Error examples
+- `GET /judge/examples/optimized-batch` - Optimized batch evaluation examples
 
 ## Data Models
 
@@ -214,6 +216,105 @@ The Judge Microservice API provides a complete code evaluation service that supp
   }
 }
 ```
+
+## Optimized Batch Evaluation
+
+### Overview
+
+The optimized batch evaluation endpoint (`POST /judge/batch/optimized`) is designed for scenarios where you need to test the same user code against multiple test configurations without recompiling. This is significantly more efficient than regular batch evaluation when testing the same code with different input data.
+
+### Key Features
+
+- **Single Compilation**: Compiles the user code only once
+- **Multiple Test Configurations**: Runs the compiled binary against different test data
+- **Efficient Resource Usage**: Reuses the same container and compiled binary
+- **Error Propagation**: Compilation errors affect all test configurations
+- **Individual Test Handling**: Runtime errors are handled per test configuration
+
+### Use Cases
+
+- **Algorithm Testing**: Test the same algorithm implementation with multiple test cases
+- **Performance Benchmarking**: Run the same code with different input sizes
+- **Edge Case Testing**: Test corner cases without recompilation overhead
+- **Contest Judging**: Efficiently evaluate submissions against multiple test datasets
+
+### Request Format (OptimizedBatchJudgeRequest)
+
+```json
+{
+  "language": "c|cpp",
+  "user_code": "string",
+  "configs": [
+    {
+      "solve_params": [
+        {
+          "name": "string",
+          "type": "int|float|double|char|string|array_int|array_float|array_char",
+          "input_value": "any"
+        }
+      ],
+      "expected": {
+        "key": "value"
+      },
+      "function_type": "int|float|double|char|string|void"
+    }
+  ],
+  "compiler_settings": {
+    "standard": "c11|cpp20|...",
+    "flags": "string"
+  },
+  "resource_limits": {
+    "compile_timeout": 30,
+    "execution_timeout": 10
+  },
+  "show_progress": true
+}
+```
+
+### Response Format
+
+The response follows the same format as regular batch evaluation but includes additional metadata about the optimization:
+
+```json
+{
+  "results": [
+    {
+      "status": "SUCCESS|COMPILE_ERROR|TIMEOUT|ERROR",
+      "message": "string",
+      "match": true,
+      "config_index": 0,
+      "metrics": {
+        "compile_execution_time": 0.160,
+        "test_execution_time": 0.004
+      }
+    }
+  ],
+  "summary": {
+    "total_tests": 3,
+    "success_count": 3,
+    "error_count": 0,
+    "success_rate": 1.0,
+    "total_execution_time": 0.523,
+    "average_time_per_test": 0.174,
+    "optimization_note": "Used optimized batch execution with single compilation",
+    "compile_once": true
+  }
+}
+```
+
+### Performance Benefits
+
+Compared to regular batch evaluation:
+- **Compilation Time**: Saved for all tests after the first one
+- **Container Overhead**: Reduced by reusing the same container
+- **Memory Usage**: More efficient memory utilization
+- **Total Time**: Significantly faster for multiple test scenarios
+
+### Error Handling
+
+- **Compilation Errors**: If compilation fails, all test configurations will receive the same compilation error
+- **Runtime Errors**: Each test configuration is handled individually
+- **Timeouts**: Compilation timeout affects all tests; execution timeout is per test configuration
 
 ## Supported Language Standards
 

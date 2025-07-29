@@ -34,6 +34,7 @@ pytest tests/test_judge_api.py -v
 
 - `POST /judge/submit` - Submit single code evaluation
 - `POST /judge/batch` - Batch code evaluation
+- `POST /judge/batch/optimized` - Optimized batch evaluation for same code with different test configurations
 
 ### Information Query Endpoints
 
@@ -110,6 +111,57 @@ result = sdk.submit_code(request)
 print(f"評測結果: {result['status']}")
 print(f"結果匹配: {result['match']}")
 ```
+
+### 4. Optimized Batch Evaluation
+
+For testing the same code with multiple test configurations efficiently:
+
+```bash
+curl -X POST "http://localhost:8000/judge/batch/optimized" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "language": "c",
+    "user_code": "#include <stdio.h>\nint solve(int *a, int *b) {\n    *a = *a * 2;\n    *b = *b * 2 + 1;\n    printf(\"Test: a=%d, b=%d\\n\", *a, *b);\n    return 0;\n}",
+    "configs": [
+      {
+        "solve_params": [
+          {"name": "a", "type": "int", "input_value": 3},
+          {"name": "b", "type": "int", "input_value": 4}
+        ],
+        "expected": {"a": 6, "b": 9},
+        "function_type": "int"
+      },
+      {
+        "solve_params": [
+          {"name": "a", "type": "int", "input_value": 5},
+          {"name": "b", "type": "int", "input_value": 10}
+        ],
+        "expected": {"a": 10, "b": 21},
+        "function_type": "int"
+      },
+      {
+        "solve_params": [
+          {"name": "a", "type": "int", "input_value": 1},
+          {"name": "b", "type": "int", "input_value": 2}
+        ],
+        "expected": {"a": 2, "b": 5},
+        "function_type": "int"
+      }
+    ],
+    "compiler_settings": {
+      "standard": "c11",
+      "flags": "-Wall -Wextra -O2"
+    },
+    "show_progress": true
+  }'
+```
+
+**Key Benefits of Optimized Batch:**
+- **Single Compilation**: Code is compiled only once for all test configurations
+- **Faster Execution**: Significantly faster for multiple test cases
+- **Resource Efficient**: Reuses compiled binary for all tests
+- **Error Propagation**: Compilation errors affect all tests (as expected)
+- **Individual Test Results**: Each configuration gets its own result
 
 ## 支援的語言和特性
 

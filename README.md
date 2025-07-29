@@ -13,7 +13,8 @@ A modern, configuration-driven online judge microservice system for automated co
 - 🔧 **Microservice Architecture**: Stateless, containerized evaluation engines
 - 🛡️ **Resource Isolation**: Secure sandboxed execution environment with resource limits
 - ⚡ **High Performance**: Efficient container lifecycle management
-- 🔌 **Python SDK**: Easy-to-use Python API for seamless integration
+- � **Optimized Batch Execution**: Test same code with multiple configurations without recompilation
+- �🔌 **Python SDK**: Easy-to-use Python API for seamless integration
 - 🌐 **Remote Support**: Execute on remote Docker hosts via SSH
 - 📊 **Detailed Reporting**: Comprehensive performance metrics and error analysis
 - 💻 **Multi-Language Support**: C and C++ with modern standards (C++11 to C++23)

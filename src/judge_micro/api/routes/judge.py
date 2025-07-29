@@ -10,6 +10,7 @@ from judge_micro.api.models.judge import (
     JudgeResponse, 
     BatchJudgeRequest, 
     BatchJudgeResponse,
+    OptimizedBatchJudgeRequest,
     JudgeExamples,
     ExecutionMetrics,
     JudgeStatus
@@ -186,6 +187,99 @@ async def batch_submit(request: BatchJudgeRequest) -> BatchJudgeResponse:
         )
 
 
+@router.post("/batch/optimized", response_model=BatchJudgeResponse)
+async def optimized_batch_submit(request: OptimizedBatchJudgeRequest) -> BatchJudgeResponse:
+    """
+    Submit optimized batch code evaluation for same language and user code with different test configurations.
+    
+    This endpoint is designed for scenarios where you want to test the same user code 
+    against multiple test configurations without recompiling. It's much more efficient 
+    for bulk testing as it compiles the code once and then runs multiple test cases.
+    
+    Features:
+    - Single compilation for all test configurations
+    - Reuses compiled binary for multiple test runs
+    - Supports different test data for each configuration
+    - Significantly faster for multiple test scenarios
+    - Handles compilation errors gracefully (affects all tests)
+    - Individual execution error handling per test configuration
+    """
+    try:
+        start_time = time.time()
+        
+        # Convert compiler settings and resource limits
+        compile_timeout = None
+        execution_timeout = None
+        
+        if request.resource_limits:
+            compile_timeout = request.resource_limits.compile_timeout
+            execution_timeout = request.resource_limits.execution_timeout
+        
+        # Execute optimized batch test
+        loop = asyncio.get_event_loop()
+        raw_results = await loop.run_in_executor(
+            executor,
+            judge_micro.optimized_batch_test,
+            request.language.value,
+            request.user_code,
+            request.configs,
+            request.show_progress,
+            compile_timeout,
+            execution_timeout
+        )
+        
+        # Convert raw results to proper response format
+        results = []
+        for raw_result in raw_results:
+            try:
+                response = _convert_legacy_result_to_response(raw_result)
+                results.append(response)
+            except Exception as e:
+                # If conversion fails, create a basic error response
+                error_response = JudgeResponse(
+                    status=JudgeStatus.ERROR,
+                    message=f"Result conversion error: {str(e)}",
+                    match=False,
+                    stdout="",
+                    stderr="",
+                    expected={},
+                    actual={},
+                    metrics=ExecutionMetrics(
+                        total_execution_time=raw_result.get('execution_time', 0),
+                        compile_execution_time=raw_result.get('compile_execution_time', 0),
+                        test_execution_time=raw_result.get('test_execution_time', 0)
+                    )
+                )
+                results.append(error_response)
+        
+        # Calculate summary statistics
+        total_time = time.time() - start_time
+        success_count = sum(1 for r in results if r.status == JudgeStatus.SUCCESS)
+        error_count = len(results) - success_count
+        
+        summary = {
+            "total_tests": len(results),
+            "success_count": success_count,
+            "error_count": error_count,
+            "success_rate": success_count / len(results) if results else 0,
+            "total_execution_time": total_time,
+            "average_time_per_test": total_time / len(results) if results else 0,
+            "optimization_note": "Used optimized batch execution with single compilation",
+            "compile_once": True
+        }
+        
+        return BatchJudgeResponse(
+            results=results,
+            summary=summary
+        )
+        
+    except Exception as e:
+        raise HTTPException(
+            status_code=500,
+            detail=f"Optimized batch judge service internal error: {str(e)}"
+        )
+
+
 @router.get("/examples/c")
 async def get_c_example() -> Dict[str, Any]:
     """Get C language judge evaluation example"""
@@ -222,6 +316,16 @@ async def get_error_example() -> Dict[str, Any]:
     return {
         "description": "Compilation error response example",
         "example": JudgeExamples.get_error_example()
+    }
+
+
+@router.get("/examples/optimized-batch")
+async def get_optimized_batch_example() -> Dict[str, Any]:
+    """Get optimized batch evaluation example"""
+    return {
+        "description": "Optimized batch evaluation example for same code with different test configurations",
+        "example": JudgeExamples.get_optimized_batch_example(),
+        "note": "This endpoint compiles the code once and runs multiple test configurations, making it very efficient for bulk testing scenarios."
     }
 
 

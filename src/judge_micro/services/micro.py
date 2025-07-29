@@ -361,6 +361,281 @@ class JudgeMicroservice:
         
         return results
 
+    def optimized_batch_test(self, 
+                           language: str,
+                           user_code: str,
+                           configs: List[Dict[str, Any]],
+                           show_progress: bool = True,
+                           compile_timeout: int = None,
+                           execution_timeout: int = None) -> List[Dict[str, Any]]:
+        """
+        Execute optimized batch tests for same language and user code with different configs.
+        Compiles once and runs multiple test configurations without recompilation.
+        
+        Args:
+            language: Programming language ('c' or 'cpp')
+            user_code: User's source code (same for all tests)
+            configs: List of test configurations (different test data)
+            show_progress: Whether to show progress
+            compile_timeout: Maximum compilation time in seconds
+            execution_timeout: Maximum execution time in seconds per test
+        
+        Returns:
+            List of test results for each configuration
+        """
+        if language not in self.DOCKER_IMAGES:
+            raise ValueError(f"Unsupported language: {language}")
+        
+        if not configs:
+            return []
+        
+        # Use provided timeouts or defaults from settings
+        compile_timeout_val = compile_timeout if compile_timeout is not None else getattr(setting, 'compile_timeout', 30)
+        execution_timeout_val = execution_timeout if execution_timeout is not None else setting.container_timeout
+        image_name = self.DOCKER_IMAGES[language]
+        container = None
+        start_time = time.time()
+        results = []
+        
+        try:
+            if show_progress:
+                print(f"🏗️ Creating {language} container for optimized batch execution...")
+            
+            # 1. Create and start container
+            container = self.docker_client.containers.create(
+                image_name,
+                cpu_quota=int(100000 * setting.container_cpu),
+                mem_limit=setting.container_mem,
+                privileged=False,
+                network_disabled=True,
+                command="sleep infinity",
+                detach=True
+            )
+            container.start()
+            
+            # 2. Upload user code and compile once
+            user_filename = "user.c" if language == 'c' else "user.cpp"
+            
+            # Upload user code file only
+            user_tar_data = self._create_user_code_tar(user_code, user_filename)
+            container.put_archive('/app', user_tar_data)
+            
+            if show_progress:
+                print(f"🔨 Compiling code once (timeout: {compile_timeout_val}s)...")
+            
+            compile_start_time = time.time()
+            
+            try:
+                # Compile the user code once
+                compile_result = container.exec_run(
+                    f"bash -c 'timeout {compile_timeout_val} bash -c \"make clean >/dev/null 2>&1 && make build >/dev/null 2>&1\"'",
+                    workdir='/app'
+                )
+                
+                compile_execution_time = time.time() - compile_start_time
+                
+                # Check compilation result
+                if compile_execution_time > compile_timeout_val:
+                    if show_progress:
+                        print(f"⏰ Compilation timeout ({compile_timeout_val}s exceeded)...")
+                    return [{
+                        "status": "COMPILE_TIMEOUT",
+                        "message": f"Compilation exceeded timeout limit of {compile_timeout_val} seconds",
+                        "execution_time": time.time() - start_time,
+                        "compile_execution_time": compile_execution_time,
+                        "config_index": i
+                    } for i in range(len(configs))]
+                
+                if compile_result.exit_code != 0:
+                    if compile_result.exit_code == 124:
+                        error_result = {
+                            "status": "COMPILE_TIMEOUT",
+                            "message": f"Compilation exceeded timeout limit of {compile_timeout_val} seconds",
+                            "execution_time": time.time() - start_time,
+                            "compile_execution_time": compile_execution_time
+                        }
+                    else:
+                        error_result = {
+                            "status": "COMPILE_ERROR",
+                            "message": "Compilation failed",
+                            "compile_output": compile_result.output.decode('utf-8', errors='ignore'),
+                            "execution_time": time.time() - start_time,
+                            "compile_execution_time": compile_execution_time
+                        }
+                    
+                    # Return same error for all configs since compilation failed
+                    return [dict(error_result, config_index=i) for i in range(len(configs))]
+                        
+            except Exception as compile_error:
+                error_result = {
+                    "status": "COMPILE_ERROR",
+                    "message": f"Compilation error: {compile_error}",
+                    "execution_time": time.time() - start_time,
+                    "compile_execution_time": time.time() - compile_start_time
+                }
+                return [dict(error_result, config_index=i) for i in range(len(configs))]
+            
+            if show_progress:
+                print(f"✅ Compilation successful! Running {len(configs)} test configurations...")
+            
+            # 3. Run tests with different configurations
+            for i, config in enumerate(configs):
+                if show_progress:
+                    print(f"⚙️ Running test configuration {i+1}/{len(configs)} (timeout: {execution_timeout_val}s)...")
+                
+                test_start_time = time.time()
+                
+                try:
+                    # Upload new config.json for this test
+                    config_tar_data = self._create_config_tar(config)
+                    container.put_archive('/app', config_tar_data)
+                    
+                    # Run test with the new configuration
+                    if self.continue_on_timeout:
+                        exec_result = container.exec_run(
+                            "bash -c 'make test >/dev/null 2>&1'",
+                            workdir='/app'
+                        )
+                    else:
+                        exec_result = container.exec_run(
+                            f"bash -c 'timeout {execution_timeout_val} make test >/dev/null 2>&1'",
+                            workdir='/app'
+                        )
+                        
+                        test_execution_time = time.time() - test_start_time
+                        if test_execution_time > execution_timeout_val:
+                            if show_progress:
+                                print(f"⏰ Test {i+1} timeout ({execution_timeout_val}s exceeded)...")
+                            results.append({
+                                "status": "TIMEOUT",
+                                "message": f"Test execution exceeded timeout limit of {execution_timeout_val} seconds",
+                                "execution_time": time.time() - start_time,
+                                "test_execution_time": test_execution_time,
+                                "compile_execution_time": compile_execution_time,
+                                "config_index": i
+                            })
+                            continue
+                        
+                        if exec_result.exit_code == 124:
+                            results.append({
+                                "status": "TIMEOUT",
+                                "message": f"Test execution exceeded timeout limit of {execution_timeout_val} seconds",
+                                "execution_time": time.time() - start_time,
+                                "test_execution_time": test_execution_time,
+                                "compile_execution_time": compile_execution_time,
+                                "config_index": i
+                            })
+                            continue
+                    
+                    # Get test results
+                    try:
+                        archive, _ = container.get_archive('/app/result.json')
+                        result_content = self._extract_result_from_tar(archive)
+                        result_json = json.loads(result_content)
+                        
+                        test_elapsed = time.time() - test_start_time
+                        total_elapsed = time.time() - start_time
+                        
+                        # Add timing and config information
+                        result_json["total_execution_time"] = total_elapsed
+                        result_json["test_execution_time"] = test_elapsed
+                        result_json["compile_execution_time"] = compile_execution_time
+                        result_json["config_index"] = i
+                        
+                        results.append(result_json)
+                        
+                        if show_progress:
+                            status = "✅" if result_json.get('status') == 'SUCCESS' else "❌"
+                            print(f"{status} Test {i+1} completed (test: {test_elapsed:.3f}s)")
+                            
+                    except Exception as e:
+                        results.append({
+                            "status": "ERROR",
+                            "message": f"Unable to read result: {e}",
+                            "exit_code": exec_result.exit_code,
+                            "execution_time": time.time() - start_time,
+                            "test_execution_time": time.time() - test_start_time,
+                            "compile_execution_time": compile_execution_time,
+                            "config_index": i
+                        })
+                        
+                except Exception as test_error:
+                    results.append({
+                        "status": "ERROR",
+                        "message": f"Test execution error: {test_error}",
+                        "execution_time": time.time() - start_time,
+                        "test_execution_time": time.time() - test_start_time,
+                        "compile_execution_time": compile_execution_time,
+                        "config_index": i
+                    })
+            
+            if show_progress:
+                total_elapsed = time.time() - start_time
+                print(f"🎉 Optimized batch execution completed! Total time: {total_elapsed:.3f}s (compile once + {len(configs)} tests)")
+            
+            return results
+                
+        except Exception as e:
+            return [{
+                "status": "ERROR", 
+                "message": str(e),
+                "execution_time": time.time() - start_time,
+                "config_index": i
+            } for i in range(len(configs))]
+        finally:
+            # Clean up container
+            if container:
+                try:
+                    if show_progress:
+                        print(f"🗑️ Destroying container...")
+                    container.stop(timeout=1)
+                    container.remove()
+                    if show_progress:
+                        print(f"✅ Container destroyed")
+                except Exception as e:
+                    if show_progress:
+                        print(f"⚠️ Error during container cleanup: {e}")
+
+    def _create_user_code_tar(self, user_code: str, user_filename: str):
+        """Create tar containing only user code file"""
+        import tarfile
+        import io
+        import time
+        
+        tar_stream = io.BytesIO()
+        with tarfile.open(fileobj=tar_stream, mode='w') as tar:
+            # Add user code file
+            user_data = user_code.encode('utf-8')
+            user_info = tarfile.TarInfo(name=user_filename)
+            user_info.size = len(user_data)
+            user_info.mode = 0o644
+            user_info.mtime = time.time()
+            user_info.type = tarfile.REGTYPE
+            tar.addfile(user_info, io.BytesIO(user_data))
+        
+        tar_stream.seek(0)
+        return tar_stream.getvalue()
+
+    def _create_config_tar(self, config: Dict[str, Any]):
+        """Create tar containing only config.json file"""
+        import tarfile
+        import io
+        import time
+        
+        tar_stream = io.BytesIO()
+        with tarfile.open(fileobj=tar_stream, mode='w') as tar:
+            # Add configuration file
+            config_data = json.dumps(config, indent=2).encode('utf-8')
+            config_info = tarfile.TarInfo(name='config.json')
+            config_info.size = len(config_data)
+            config_info.mode = 0o644
+            config_info.mtime = time.time()
+            config_info.type = tarfile.REGTYPE
+            tar.addfile(config_info, io.BytesIO(config_data))
+        
+        tar_stream.seek(0)
+        return tar_stream.getvalue()
+
 # Create judge microservice instance
 print("🚀 Creating judge microservice instance...")
 judge_micro = JudgeMicroservice()
