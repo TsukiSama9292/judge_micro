@@ -129,22 +129,18 @@ docker compose up -d
 ```bash
 # Install from PyPI
 pip install judge_micro
+# (Optional) Start API Server
+uvicorn judge_micro.api.main:get_app --host 0.0.0.0 --port 8000 --factory --reload
+```
 
-# Or install from source
+### Method 3: Python SDK Installation (From Github)
+
+```bash
 git clone https://github.com/TsukiSama9292/judge_micro.git
 cd judge_micro
 pip install -e .
-```
-
-### Method 3: API Service
-
-```bash
-# Start the REST API server
-python3 main.py prod # or python3 main.py dev
-
-# Access API documentation
-# - Swagger UI: http://localhost:8000/docs
-# - ReDoc: http://localhost:8000/redoc
+# (Optional) Start API Server
+uvicorn judge_micro.api.main:get_app --host 0.0.0.0 --port 8000 --factory --reload
 ```
 
 ## 💡 Usage Examples
