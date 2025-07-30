@@ -40,7 +40,7 @@ A modern, configuration-driven online judge microservice system for automated co
 │  │                                                                 │ │
 │  │  ┌───────────────┐  ┌───────────────┐  ┌─────────────────────┐  │ │
 │  │  │  C Container  │  │ C++ Container │  │  Python Container   │  │ │
-│  │  │ - GCC Compiler│  │- G++ Compiler │  │ - Python 3.9-3.13   │  │ │
+│  │  │- GCC Compiler │  │- G++ Compiler │  │ - Python 3.9-3.13   │  │ │
 │  │  │- cJSON Library│  │- JSON Library │  │ - JSON Library      │  │ │
 │  │  │- Test Harness │  │- Test Harness │  │ - Test Harness      │  │ │
 │  │  └───────────────┘  └───────────────┘  └─────────────────────┘  │ │
