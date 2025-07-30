@@ -140,7 +140,7 @@ pip install -e .
 
 ```bash
 # Start the REST API server
-uvicorn judge_micro.api.main:get_app --host 0.0.0.0 --port 8000 --factory --reload
+python3 main.py prod # or python3 main.py dev
 
 # Access API documentation
 # - Swagger UI: http://localhost:8000/docs
