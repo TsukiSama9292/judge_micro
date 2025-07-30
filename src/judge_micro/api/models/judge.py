@@ -76,6 +76,7 @@ class JudgeStatus(str, Enum):
     RUNTIME_ERROR = "RUNTIME_ERROR"
     TIMEOUT = "TIMEOUT"
     TIMEOUT_ERROR = "TIMEOUT_ERROR"
+    WRONG_ANSWER = "WRONG_ANSWER"
     ERROR = "ERROR"
 
 

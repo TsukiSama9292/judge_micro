@@ -159,8 +159,9 @@ judge = JudgeMicroservice()
 
 # C/C++ example
 user_code = '''
-int solve(int a, int b) {
-    return a + b;
+int solve(int *a, int *b) {
+    *a = *a + *b;
+    return 0;
 }
 '''
 
@@ -169,7 +170,7 @@ config = {
         {"name": "a", "type": "int", "input_value": 5},
         {"name": "b", "type": "int", "input_value": 3}
     ],
-    "expected": {"result": 8},
+    "expected": {"a": 8, "b": 3},
     "function_type": "int"
 }
 
@@ -185,8 +186,9 @@ if result['status'] == 'SUCCESS':
 ```python
 # Python code example
 python_code = '''
-def solve(numbers: list, multiplier: int) -> list:
-    return [x * multiplier for x in numbers]
+def solve(numbers: list, multiplier: int) -> tuple:
+    result = [x * multiplier for x in numbers]
+    return (result, multiplier, result)
 '''
 
 python_config = {
@@ -194,7 +196,7 @@ python_config = {
         {"name": "numbers", "type": "list", "input_value": [1, 2, 3, 4]},
         {"name": "multiplier", "type": "int", "input_value": 2}
     ],
-    "expected": {"result": [2, 4, 6, 8]},
+    "expected": {"numbers": [2, 4, 6, 8], "multiplier": 2, "return_value": [2, 4, 6, 8]},
     "function_type": "list"
 }
 
@@ -210,27 +212,43 @@ result = judge.run_microservice('python-3.11', python_code, python_config)
 ```python
 # Test same code with multiple configurations efficiently
 user_code = '''
-int factorial(int n) {
-    if (n <= 1) return 1;
-    return n * factorial(n - 1);
+int solve(int *n, int *result) {
+    if (*n <= 1) {
+        *result = 1;
+    } else {
+        *result = 1;
+        for (int i = 2; i <= *n; i++) {
+            *result *= i;
+        }
+    }
+    return 0;
 }
 '''
 
 # Multiple test configurations
 configs = [
     {
-        "solve_params": [{"name": "n", "type": "int", "input_value": 5}],
-        "expected": {"result": 120},
+        "solve_params": [
+            {"name": "n", "type": "int", "input_value": 5},
+            {"name": "result", "type": "int", "input_value": 0}
+        ],
+        "expected": {"n": 5, "result": 120},
         "function_type": "int"
     },
     {
-        "solve_params": [{"name": "n", "type": "int", "input_value": 0}],
-        "expected": {"result": 1},
+        "solve_params": [
+            {"name": "n", "type": "int", "input_value": 0},
+            {"name": "result", "type": "int", "input_value": 0}
+        ],
+        "expected": {"n": 0, "result": 1},
         "function_type": "int"
     },
     {
-        "solve_params": [{"name": "n", "type": "int", "input_value": 7}],
-        "expected": {"result": 5040},
+        "solve_params": [
+            {"name": "n", "type": "int", "input_value": 7},
+            {"name": "result", "type": "int", "input_value": 0}
+        ],
+        "expected": {"n": 7, "result": 5040},
         "function_type": "int"
     }
 ]
@@ -248,12 +266,12 @@ curl -X POST "http://localhost:8000/judge/submit" \
 -H "Content-Type: application/json" \
 -d '{
   "language": "c",
-  "user_code": "int solve(int a, int b) { return a + b; }",
+  "user_code": "int solve(int *a, int *b) { *a = *a + *b; return 0; }",
   "solve_params": [
     {"name": "a", "type": "int", "input_value": 5},
     {"name": "b", "type": "int", "input_value": 3}
   ],
-  "expected": {"result": 8},
+  "expected": {"a": 8, "b": 3},
   "function_type": "int"
 }'
 ```
@@ -266,12 +284,12 @@ curl -X POST "http://localhost:8000/judge/submit" \
 -H "Content-Type: application/json" \
 -d '{
   "language": "python-3.12",
-  "user_code": "def solve(numbers: list, target: int) -> bool:\n    return target in numbers",
+  "user_code": "def solve(numbers: list, target: int) -> tuple:\n    found = target in numbers\n    return (numbers, target, found)",
   "solve_params": [
     {"name": "numbers", "type": "list", "input_value": [1, 2, 3, 4, 5]},
     {"name": "target", "type": "int", "input_value": 3}
   ],
-  "expected": {"result": true},
+  "expected": {"numbers": [1, 2, 3, 4, 5], "target": 3, "return_value": true},
   "function_type": "bool"
 }'
 ```
@@ -284,16 +302,22 @@ curl -X POST "http://localhost:8000/judge/batch/optimized" \
 -H "Content-Type: application/json" \
 -d '{
   "language": "c",
-  "user_code": "int solve(int x) { return x * x; }",
-  "test_configs": [
+  "user_code": "int solve(int *x, int *result) { *result = (*x) * (*x); return 0; }",
+  "configs": [
     {
-      "solve_params": [{"name": "x", "type": "int", "input_value": 2}],
-      "expected": {"result": 4},
+      "solve_params": [
+        {"name": "x", "type": "int", "input_value": 2},
+        {"name": "result", "type": "int", "input_value": 0}
+      ],
+      "expected": {"x": 2, "result": 4},
       "function_type": "int"
     },
     {
-      "solve_params": [{"name": "x", "type": "int", "input_value": 5}],
-      "expected": {"result": 25},
+      "solve_params": [
+        {"name": "x", "type": "int", "input_value": 5},
+        {"name": "result", "type": "int", "input_value": 0}
+      ],
+      "expected": {"x": 5, "result": 25},
       "function_type": "int"
     }
   ]
@@ -325,13 +349,32 @@ curl -X POST "http://localhost:8000/judge/batch/optimized" \
 - **No Compilation**: Direct execution for faster testing
 - **Version-Specific Testing**: Test code compatibility across Python versions
 
+## 🔀 Language-Specific Patterns
+
+### C/C++ Pattern
+```c
+// C functions use pointers to modify parameters
+int solve(int *input, int *result) {
+    *result = (*input) * (*input);
+    return 0;
+}
+```
+**Expected format**: `{"input": 5, "result": 25}`
+
+### Python Pattern
+```python
+# Python functions return tuple with all values
+def solve(input_val: int, result: int) -> tuple:
+    calculated = input_val * input_val
+    return (input_val, calculated, calculated)
+```
+**Expected format**: `{"input_val": 5, "result": 25, "return_value": 25}`
+
 ## 📚 Documentation
 
 - **[API Design](docs/api_design.md)**: Complete API specification and data models
 - **[API Usage Guide](docs/api_usage.md)**: HTTP API usage examples and best practices
 - **[Python SDK Guide](docs/python_sdk.md)**: Comprehensive Python SDK documentation
-- **[Python Language Support](PYTHON_SUPPORT.md)**: Python language support documentation
-- **[Optimized Batch Implementation](OPTIMIZED_BATCH_IMPLEMENTATION.md)**: Batch processing documentation
 - **[C Language Examples](docker/c/README.md)**: C language evaluation examples and configurations
 - **[C++ Language Examples](docker/c++/README.md)**: C++ language evaluation examples and configurations
 - **[Python Language Examples](docker/python/README.md)**: Python language evaluation examples and configurations
@@ -395,7 +438,7 @@ judge = JudgeMicroservice()
 results = judge.optimized_batch_test(
     language='python',
     user_code=user_code,
-    test_configs=multiple_configs
+    configs=multiple_configs
 )
 
 # Performance benefits:
