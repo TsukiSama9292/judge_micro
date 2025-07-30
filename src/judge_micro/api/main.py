@@ -18,7 +18,7 @@ def get_app(debug: bool = None) -> FastAPI:
             title="Judge Micro API",
             service_name="judge_micro_api",
             description="API for Judge Micro service",
-            version="0.0.3.dev0",
+            version="0.0.3",
             license_info={
                 "name": "Apache License 2.0",
             },
@@ -32,7 +32,7 @@ def get_app(debug: bool = None) -> FastAPI:
             title="Judge Micro API",
             service_name="judge_micro_api",
             description="API for Judge Micro service",
-            version="0.0.3.dev0",
+            version="0.0.3",
             license_info={
                 "name": "Apache License 2.0",
             },
