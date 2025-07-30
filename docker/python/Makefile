@@ -28,6 +28,11 @@ build:
 
 # Test with basic examples
 test: build
+	@echo "Running Python OJ test..."
+	python3 harness.py config.json result.json
+
+# Comprehensive test suite (renamed from original test target)
+test-all: build
 	@echo "Testing Python OJ Runner..."
 	
 	@echo "Test 1: Basic functionality"

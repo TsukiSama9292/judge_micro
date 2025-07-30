@@ -66,8 +66,8 @@ def _execute_judge_sync(request: JudgeRequest) -> JudgeResponse:
             "function_type": request.function_type.value
         }
         
-        # Add compiler settings
-        if request.compiler_settings:
+        # Add compiler settings (only for compiled languages)
+        if request.compiler_settings and not request.language.value.startswith('python'):
             if request.compiler_settings.standard:
                 if request.language.value == 'c':
                     config["c_standard"] = request.compiler_settings.standard.value

@@ -7,6 +7,12 @@ class LanguageType(str, Enum):
     """Supported programming language types"""
     C = "c"
     CPP = "cpp"
+    PYTHON = "python"
+    PYTHON_3_9 = "python-3.9"
+    PYTHON_3_10 = "python-3.10"
+    PYTHON_3_11 = "python-3.11"
+    PYTHON_3_12 = "python-3.12"
+    PYTHON_3_13 = "python-3.13"
 
 
 class ParameterType(str, Enum):
@@ -19,6 +25,11 @@ class ParameterType(str, Enum):
     ARRAY_INT = "array_int"
     ARRAY_FLOAT = "array_float"
     ARRAY_CHAR = "array_char"
+    # Python types
+    STR = "str"
+    BOOL = "bool"
+    LIST = "list"
+    DICT = "dict"
 
 
 class FunctionType(str, Enum):
@@ -29,6 +40,12 @@ class FunctionType(str, Enum):
     CHAR = "char"
     STRING = "string"
     VOID = "void"
+    # Python types
+    STR = "str"
+    BOOL = "bool"
+    LIST = "list"
+    DICT = "dict"
+    NONE = "None"
 
 
 class CStandard(str, Enum):

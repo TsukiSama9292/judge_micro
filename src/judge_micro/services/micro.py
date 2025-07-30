@@ -55,7 +55,7 @@ class JudgeMicroservice:
         Efficient microservice execution - Create->Execute->Destroy in one go
         
         Args:
-            language: 'c' or 'cpp'
+            language: 'c', 'cpp', 'python', or specific python version like 'python-3.11'
             user_code: User's code
             config: Test configuration
             show_logs: Whether to show detailed logs
@@ -71,6 +71,9 @@ class JudgeMicroservice:
         image_name = self.DOCKER_IMAGES[language]
         container = None
         start_time = time.time()
+        
+        # Check if this is a Python language
+        is_python = language.startswith('python')
         
         try:
             # 1. Quickly create container (don't wait for full startup)
@@ -89,7 +92,10 @@ class JudgeMicroservice:
             container.start()
             
             # 2. Prepare and upload files
-            user_filename = "user.c" if language == 'c' else "user.cpp"
+            if is_python:
+                user_filename = "user.py"
+            else:
+                user_filename = "user.c" if language == 'c' else "user.cpp"
             
             # Create tar archive containing all files
             tar_data = self._create_file_tar(user_code, config, user_filename)
@@ -97,61 +103,69 @@ class JudgeMicroservice:
             # 3. Upload and extract all files at once (automatically overwrites same-name files)
             container.put_archive('/app', tar_data)
             
-            # 4. First compile the code (with compilation timeout constraint)
-            if show_logs:
-                print(f"🔨 Compiling code (timeout: {compile_timeout_val}s)...")
-            
-            compile_start_time = time.time()
-            
-            try:
-                compile_result = container.exec_run(
-                    f"bash -c 'timeout {compile_timeout_val} bash -c \"make clean >/dev/null 2>&1 && make build >/dev/null 2>&1\"'",
-                    workdir='/app'
-                )
+            # 4. For non-Python languages, compile the code (with compilation timeout constraint)
+            if not is_python:
+                if show_logs:
+                    print(f"🔨 Compiling code (timeout: {compile_timeout_val}s)...")
                 
-                compile_execution_time = time.time() - compile_start_time
+                compile_start_time = time.time()
                 
-                # Check if compilation exceeded timeout
-                if compile_execution_time > compile_timeout_val:
-                    if show_logs:
-                        print(f"⏰ Compilation timeout ({compile_timeout_val}s exceeded)...")
-                    container.stop(timeout=1)
-                    return {
-                        "status": "COMPILE_TIMEOUT",
-                        "message": f"Compilation exceeded timeout limit of {compile_timeout_val} seconds",
-                        "execution_time": time.time() - start_time,
-                        "compile_execution_time": compile_execution_time
-                    }
-                
-                if compile_result.exit_code != 0:
-                    # Check if it's a timeout exit code (124 from timeout command)
-                    if compile_result.exit_code == 124:
+                try:
+                    compile_result = container.exec_run(
+                        f"bash -c 'timeout {compile_timeout_val} bash -c \"make clean >/dev/null 2>&1 && make build >/dev/null 2>&1\"'",
+                        workdir='/app'
+                    )
+                    
+                    compile_execution_time = time.time() - compile_start_time
+                    
+                    # Check if compilation exceeded timeout
+                    if compile_execution_time > compile_timeout_val:
+                        if show_logs:
+                            print(f"⏰ Compilation timeout ({compile_timeout_val}s exceeded)...")
+                        container.stop(timeout=1)
                         return {
                             "status": "COMPILE_TIMEOUT",
                             "message": f"Compilation exceeded timeout limit of {compile_timeout_val} seconds",
                             "execution_time": time.time() - start_time,
                             "compile_execution_time": compile_execution_time
                         }
-                    else:
-                        return {
-                            "status": "COMPILE_ERROR",
-                            "message": "Compilation failed",
-                            "compile_output": compile_result.output.decode('utf-8', errors='ignore'),
-                            "execution_time": time.time() - start_time,
-                            "compile_execution_time": compile_execution_time
-                        }
-                        
-            except Exception as compile_error:
-                return {
-                    "status": "COMPILE_ERROR",
-                    "message": f"Compilation error: {compile_error}",
-                    "execution_time": time.time() - start_time,
-                    "compile_execution_time": time.time() - compile_start_time
-                }
+                    
+                    if compile_result.exit_code != 0:
+                        # Check if it's a timeout exit code (124 from timeout command)
+                        if compile_result.exit_code == 124:
+                            return {
+                                "status": "COMPILE_TIMEOUT",
+                                "message": f"Compilation exceeded timeout limit of {compile_timeout_val} seconds",
+                                "execution_time": time.time() - start_time,
+                                "compile_execution_time": compile_execution_time
+                            }
+                        else:
+                            return {
+                                "status": "COMPILE_ERROR",
+                                "message": "Compilation failed",
+                                "compile_output": compile_result.output.decode('utf-8', errors='ignore'),
+                                "execution_time": time.time() - start_time,
+                                "compile_execution_time": compile_execution_time
+                            }
+                            
+                except Exception as compile_error:
+                    return {
+                        "status": "COMPILE_ERROR",
+                        "message": f"Compilation error: {compile_error}",
+                        "execution_time": time.time() - start_time,
+                        "compile_execution_time": time.time() - compile_start_time
+                    }
+            else:
+                # For Python, we skip compilation step
+                compile_start_time = time.time()
+                compile_execution_time = 0
+                if show_logs:
+                    print(f"🐍 Python detected, skipping compilation...")
             
             # 5. Now run the test with execution timeout constraint
             if show_logs:
-                print(f"⚙️ Running test (timeout: {execution_timeout_val}s)...")
+                test_msg = "⚙️ Running Python test" if is_python else "⚙️ Running test"
+                print(f"{test_msg} (timeout: {execution_timeout_val}s)...")
             
             test_start_time = time.time()
             
@@ -165,6 +179,7 @@ class JudgeMicroservice:
             else:
                 # Execute with timeout - stop container if it exceeds timeout
                 try:
+
                     exec_result = container.exec_run(
                         "bash -c 'timeout {execution_timeout_val} make test >/dev/null 2>&1'".format(execution_timeout_val=execution_timeout_val),
                         workdir='/app'
@@ -309,11 +324,11 @@ class JudgeMicroservice:
         Execute microservice test using specified version
         
         Args:
-            language: Programming language ('c' or 'cpp')
+            language: Programming language ('c', 'cpp', 'python', or specific python version like 'python-3.11')
             user_code: User's source code
             solve_params: Parameters for solving
             expected: Expected results
-            standard: Language standard (e.g., 'c11', 'cpp20')
+            standard: Language standard (e.g., 'c11', 'cpp20') - ignored for Python
             show_logs: Whether to show execution logs
             compile_timeout: Maximum compilation time in seconds (uses setting.compile_timeout if None)
             execution_timeout: Maximum execution time in seconds (uses setting.container_timeout if None)
@@ -325,7 +340,8 @@ class JudgeMicroservice:
             "function_type": "int"
         }
         
-        if standard:
+        # For non-Python languages, add compiler settings
+        if standard and not language.startswith('python'):
             if language == 'c':
                 config["c_standard"] = standard
             elif language == 'cpp':
@@ -333,7 +349,8 @@ class JudgeMicroservice:
             config["compiler_flags"] = "-Wall -Wextra -O2"
         
         if show_logs:
-            print(f"🔧 Configuration: {language}" + (f" ({standard})" if standard else ""))
+            version_info = f" ({standard})" if standard and not language.startswith('python') else ""
+            print(f"🔧 Configuration: {language}{version_info}")
         
         return self.run_microservice(language, user_code, config, show_logs, compile_timeout, execution_timeout)
     
@@ -370,14 +387,15 @@ class JudgeMicroservice:
                            execution_timeout: int = None) -> List[Dict[str, Any]]:
         """
         Execute optimized batch tests for same language and user code with different configs.
-        Compiles once and runs multiple test configurations without recompilation.
+        For compiled languages (C/C++): compiles once and runs multiple test configurations without recompilation.
+        For Python: skips compilation and runs multiple test configurations directly.
         
         Args:
-            language: Programming language ('c' or 'cpp')
+            language: Programming language ('c', 'cpp', 'python', or specific python version like 'python-3.11')
             user_code: User's source code (same for all tests)
             configs: List of test configurations (different test data)
             show_progress: Whether to show progress
-            compile_timeout: Maximum compilation time in seconds
+            compile_timeout: Maximum compilation time in seconds (ignored for Python)
             execution_timeout: Maximum execution time in seconds per test
         
         Returns:
@@ -397,6 +415,9 @@ class JudgeMicroservice:
         start_time = time.time()
         results = []
         
+        # Check if this is a Python language
+        is_python = language.startswith('python')
+        
         try:
             if show_progress:
                 print(f"🏗️ Creating {language} container for optimized batch execution...")
@@ -413,72 +434,83 @@ class JudgeMicroservice:
             )
             container.start()
             
-            # 2. Upload user code and compile once
-            user_filename = "user.c" if language == 'c' else "user.cpp"
+            # 2. Upload user code and handle compilation
+            if is_python:
+                user_filename = "user.py"
+            else:
+                user_filename = "user.c" if language == 'c' else "user.cpp"
             
             # Upload user code file only
             user_tar_data = self._create_user_code_tar(user_code, user_filename)
             container.put_archive('/app', user_tar_data)
             
-            if show_progress:
-                print(f"🔨 Compiling code once (timeout: {compile_timeout_val}s)...")
-            
-            compile_start_time = time.time()
-            
-            try:
-                # Compile the user code once
-                compile_result = container.exec_run(
-                    f"bash -c 'timeout {compile_timeout_val} bash -c \"make clean >/dev/null 2>&1 && make build >/dev/null 2>&1\"'",
-                    workdir='/app'
-                )
+            # 3. For non-Python languages, compile once
+            if not is_python:
+                if show_progress:
+                    print(f"🔨 Compiling code once (timeout: {compile_timeout_val}s)...")
                 
-                compile_execution_time = time.time() - compile_start_time
+                compile_start_time = time.time()
                 
-                # Check compilation result
-                if compile_execution_time > compile_timeout_val:
-                    if show_progress:
-                        print(f"⏰ Compilation timeout ({compile_timeout_val}s exceeded)...")
-                    return [{
-                        "status": "COMPILE_TIMEOUT",
-                        "message": f"Compilation exceeded timeout limit of {compile_timeout_val} seconds",
-                        "execution_time": time.time() - start_time,
-                        "compile_execution_time": compile_execution_time,
-                        "config_index": i
-                    } for i in range(len(configs))]
-                
-                if compile_result.exit_code != 0:
-                    if compile_result.exit_code == 124:
-                        error_result = {
+                try:
+                    # Compile the user code once
+                    compile_result = container.exec_run(
+                        f"bash -c 'timeout {compile_timeout_val} bash -c \"make clean >/dev/null 2>&1 && make build >/dev/null 2>&1\"'",
+                        workdir='/app'
+                    )
+                    
+                    compile_execution_time = time.time() - compile_start_time
+                    
+                    # Check compilation result
+                    if compile_execution_time > compile_timeout_val:
+                        if show_progress:
+                            print(f"⏰ Compilation timeout ({compile_timeout_val}s exceeded)...")
+                        return [{
                             "status": "COMPILE_TIMEOUT",
                             "message": f"Compilation exceeded timeout limit of {compile_timeout_val} seconds",
                             "execution_time": time.time() - start_time,
-                            "compile_execution_time": compile_execution_time
-                        }
-                    else:
-                        error_result = {
-                            "status": "COMPILE_ERROR",
-                            "message": "Compilation failed",
-                            "compile_output": compile_result.output.decode('utf-8', errors='ignore'),
-                            "execution_time": time.time() - start_time,
-                            "compile_execution_time": compile_execution_time
-                        }
+                            "compile_execution_time": compile_execution_time,
+                            "config_index": i
+                        } for i in range(len(configs))]
                     
-                    # Return same error for all configs since compilation failed
-                    return [dict(error_result, config_index=i) for i in range(len(configs))]
+                    if compile_result.exit_code != 0:
+                        if compile_result.exit_code == 124:
+                            error_result = {
+                                "status": "COMPILE_TIMEOUT",
+                                "message": f"Compilation exceeded timeout limit of {compile_timeout_val} seconds",
+                                "execution_time": time.time() - start_time,
+                                "compile_execution_time": compile_execution_time
+                            }
+                        else:
+                            error_result = {
+                                "status": "COMPILE_ERROR",
+                                "message": "Compilation failed",
+                                "compile_output": compile_result.output.decode('utf-8', errors='ignore'),
+                                "execution_time": time.time() - start_time,
+                                "compile_execution_time": compile_execution_time
+                            }
                         
-            except Exception as compile_error:
-                error_result = {
-                    "status": "COMPILE_ERROR",
-                    "message": f"Compilation error: {compile_error}",
-                    "execution_time": time.time() - start_time,
-                    "compile_execution_time": time.time() - compile_start_time
-                }
-                return [dict(error_result, config_index=i) for i in range(len(configs))]
+                        # Return same error for all configs since compilation failed
+                        return [dict(error_result, config_index=i) for i in range(len(configs))]
+                            
+                except Exception as compile_error:
+                    error_result = {
+                        "status": "COMPILE_ERROR",
+                        "message": f"Compilation error: {compile_error}",
+                        "execution_time": time.time() - start_time,
+                        "compile_execution_time": time.time() - compile_start_time
+                    }
+                    return [dict(error_result, config_index=i) for i in range(len(configs))]
+                
+                if show_progress:
+                    print(f"✅ Compilation successful! Running {len(configs)} test configurations...")
+            else:
+                # For Python, skip compilation
+                compile_start_time = time.time()
+                compile_execution_time = 0
+                if show_progress:
+                    print(f"🐍 Python detected, skipping compilation. Running {len(configs)} test configurations...")
             
-            if show_progress:
-                print(f"✅ Compilation successful! Running {len(configs)} test configurations...")
-            
-            # 3. Run tests with different configurations
+            # 4. Run tests with different configurations
             for i, config in enumerate(configs):
                 if show_progress:
                     print(f"⚙️ Running test configuration {i+1}/{len(configs)} (timeout: {execution_timeout_val}s)...")

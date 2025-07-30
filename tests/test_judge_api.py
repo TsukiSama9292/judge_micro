@@ -183,8 +183,8 @@ int solve(int *a) {
     def test_invalid_language(self):
         """Test invalid language"""
         request_data = {
-            "language": "python",  # Unsupported language
-            "user_code": "print('hello')",
+            "language": "javascript",  # Unsupported language
+            "user_code": "console.log('hello')",
             "solve_params": [{"name": "a", "type": "int", "input_value": 1}],
             "expected": {"a": 1},
             "function_type": "int"
