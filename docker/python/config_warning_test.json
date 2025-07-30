@@ -1,0 +1,8 @@
+{
+  "solve_params": [
+    {"name": "data", "type": "list", "input_value": [1, 2, 3]},
+    {"name": "result", "type": "str", "input_value": ""}
+  ],
+  "expected": {"data": [1, 2, 3], "result": "warning"},
+  "function_type": "None"
+}

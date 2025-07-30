@@ -1,0 +1,8 @@
+{
+  "solve_params": [
+    {"name": "text", "type": "str", "input_value": "hello"},
+    {"name": "count", "type": "int", "input_value": 0}
+  ],
+  "expected": {"text": "HELLO", "count": 5},
+  "function_type": "bool"
+}

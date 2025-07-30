@@ -1,0 +1,48 @@
+name: Python
+
+on:
+  schedule:
+    - cron: '0 16 1 * *'
+  workflow_dispatch:
+  
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v3
+
+    - name: Set up Docker Buildx
+      uses: docker/setup-buildx-action@v2
+
+    - name: Log in to Docker Hub
+      uses: docker/login-action@v2
+      with:
+        username: ${{ secrets.DOCKER_USERNAME }}
+        password: ${{ secrets.DOCKER_PASSWORD }}
+    
+    - name: Build Python Images
+      run: |
+        cd docker/python
+        docker build --pull --no-cache --build-arg PYTHON_TAG=3.9-bookworm -t tsukisama9292/judge_micro:python-3.9 .
+        docker build --pull --no-cache --build-arg PYTHON_TAG=3.10-bookworm -t tsukisama9292/judge_micro:python-3.10 .
+        docker build --pull --no-cache --build-arg PYTHON_TAG=3.11-bookworm -t tsukisama9292/judge_micro:python-3.11 .
+        docker build --pull --no-cache --build-arg PYTHON_TAG=3.12-bookworm -t tsukisama9292/judge_micro:python-3.12 .
+        docker build --pull --no-cache --build-arg PYTHON_TAG=3.13-bookworm -t tsukisama9292/judge_micro:python-3.13 .
+    
+    - name: CI Test
+      run: |
+        docker run --rm tsukisama9292/judge_micro:python-3.9 make test-ci
+        docker run --rm tsukisama9292/judge_micro:python-3.10 make test-ci
+        docker run --rm tsukisama9292/judge_micro:python-3.11 make test-ci
+        docker run --rm tsukisama9292/judge_micro:python-3.12 make test-ci
+        docker run --rm tsukisama9292/judge_micro:python-3.13 make test-ci
+
+    - name: Push the Docker image to Docker Hub
+      run: |
+        docker push tsukisama9292/judge_micro:python-3.9
+        docker push tsukisama9292/judge_micro:python-3.10
+        docker push tsukisama9292/judge_micro:python-3.11
+        docker push tsukisama9292/judge_micro:python-3.12
+        docker push tsukisama9292/judge_micro:python-3.13

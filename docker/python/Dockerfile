@@ -1,9 +1,9 @@
-ARG GCC_TAG=15-bookworm
-FROM gcc:${GCC_TAG}
+ARG PYTHON_TAG=3.9-bookworm
+FROM python:${PYTHON_TAG}
 
 RUN apt-get update && \
     apt-get install -y \
-        g++ nlohmann-json3-dev make && \
+    make && \
     rm -rf /var/lib/apt/lists/*
 
 RUN mkdir /app

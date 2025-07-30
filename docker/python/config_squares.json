@@ -1,0 +1,7 @@
+{
+  "solve_params": [
+    {"name": "x", "type": "int", "input_value": 5}
+  ],
+  "expected": {"x": 25},
+  "function_type": "int"
+}
