@@ -63,7 +63,7 @@ A modern, configuration-driven online judge microservice system for automated co
 └──────────────────────────────────────────────────────────────────────┘
 ```
 
-## AI Usage
+## 🧠 AI Usage
 
 I checked the code, wrote parts of it, and worked on logic, flow, and documentation. AI tools helped speed things up and gave useful suggestions along the way.
 
