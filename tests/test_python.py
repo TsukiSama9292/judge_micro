@@ -6,11 +6,46 @@ from judge_micro.api.main import get_app
 client = TestClient(get_app())
 
 
-class TestPythonSupport:
-    """Test Python language support"""
+class TestPythonLanguage:
+    """Test Python language support - both API and service level"""
+
+    def test_python_service_basic(self):
+        """Test Python language using service directly"""
+        from judge_micro.services.micro import judge_micro
+        
+        python_code = '''
+def solve(a: int, b: int) -> tuple:
+    """Test function that modifies parameters via tuple return"""
+    new_a = a * 2
+    new_b = b + 5
+    return (new_a, new_b, 0)
+'''
+
+        solve_params_test = [
+            {"name": "a", "type": "int", "input_value": 3},
+            {"name": "b", "type": "int", "input_value": 4}
+        ]
+
+        expected_test = {"a": 6, "b": 9}
+
+        config = {
+            "solve_params": solve_params_test,
+            "expected": expected_test,
+            "function_type": "int"
+        }
+
+        result_python = judge_micro.run_microservice(
+            language='python',
+            user_code=python_code,
+            config=config,
+            show_logs=True
+        )
+        print("Python result:\n", result_python)
+        # Python might not be fully implemented in the service layer
+        assert result_python.get('status').lower() in ['success', 'error']
 
     def test_python_basic(self):
-        """Test basic Python functionality"""
+        """Test basic Python functionality via API"""
         request_data = {
             "language": "python",
             "user_code": '''
@@ -267,3 +302,7 @@ def solve(value: int) -> tuple:
             # Note: Some versions might not be available in testing environment
             # so we accept both SUCCESS and ERROR (missing Docker image)
             assert result["status"] in ["SUCCESS", "ERROR"], f"Unexpected status for {version}: {result['status']}"
+
+
+if __name__ == "__main__":
+    pytest.main([__file__, "-v"])

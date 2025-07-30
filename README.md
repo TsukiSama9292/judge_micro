@@ -69,7 +69,7 @@ I checked the code, wrote parts of it, and worked on logic, flow, and documentat
 
 ### Vibe Coding
 
-- Tools: VSCode Copilot  
+- Tools: VSCode - Github Copilot  
 - Models: Claude Sonnet 4  
 - Helped with code completion, logic refinement, and some quick snippets.
 
@@ -140,7 +140,7 @@ git clone https://github.com/TsukiSama9292/judge_micro.git
 cd judge_micro
 pip install -e .
 # (Optional) Start API Server
-uvicorn judge_micro.api.main:get_app --host 0.0.0.0 --port 8000 --factory --reload
+python3 main.py dev
 ```
 
 ## 💡 Usage Examples
