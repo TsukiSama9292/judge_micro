@@ -47,6 +47,11 @@ jobs:
         run: |
           docker pull tsukisama9292/judge_micro:c
           docker pull tsukisama9292/judge_micro:c_plus_plus
+          docker pull tsukisama9292/judge_micro:python-3.9
+          docker pull tsukisama9292/judge_micro:python-3.10
+          docker pull tsukisama9292/judge_micro:python-3.11
+          docker pull tsukisama9292/judge_micro:python-3.12
+          docker pull tsukisama9292/judge_micro:python-3.13
 
       - name: Run tests
         run: uv run python -X utf8 -m pytest -s
