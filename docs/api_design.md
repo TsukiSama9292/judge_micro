@@ -2,7 +2,7 @@
 
 ## Overview
 
-The Judge Microservice API provides a complete code evaluation service that supports C and C++ language code compilation, execution, and result verification.
+The Judge Microservice API provides a complete code evaluation service that supports C, C++, and Python language code compilation, execution, and result verification.
 
 ## API Endpoints
 
@@ -23,6 +23,7 @@ The Judge Microservice API provides a complete code evaluation service that supp
 
 - `GET /judge/examples/c` - C language examples
 - `GET /judge/examples/cpp` - C++ language examples
+- `GET /judge/examples/python` - Python language examples
 - `GET /judge/examples/advanced` - Advanced examples
 - `GET /judge/examples/error` - Error examples
 - `GET /judge/examples/optimized-batch` - Optimized batch evaluation examples
@@ -33,7 +34,7 @@ The Judge Microservice API provides a complete code evaluation service that supp
 
 ```json
 {
-  "language": "c|cpp",
+  "language": "c|cpp|python",
   "user_code": "string",
   "solve_params": [
     {
@@ -47,7 +48,7 @@ The Judge Microservice API provides a complete code evaluation service that supp
   },
   "function_type": "int|float|double|char|string|void",
   "compiler_settings": {
-    "standard": "c11|cpp20|...",
+    "standard": "c11|cpp20|python3.12|...",
     "flags": "string",
     "optimization_level": "string"
   },
@@ -146,7 +147,26 @@ The Judge Microservice API provides a complete code evaluation service that supp
 }
 ```
 
-### 3. Advanced C++ Example (Vector Operations)
+### 3. Python Language Example
+
+**Request:**
+```json
+{
+  "language": "python",
+  "user_code": "def solve(a: int, b: int) -> tuple:\n    \"\"\"Modify parameters and return new values\"\"\"\n    a = a * 2\n    b = b * 2 + 1\n    print(\"Hello from Python!\")\n    return (a, b, 0)",
+  "solve_params": [
+    {"name": "a", "type": "int", "input_value": 3},
+    {"name": "b", "type": "int", "input_value": 4}
+  ],
+  "expected": {"a": 6, "b": 9},
+  "function_type": "int",
+  "compiler_settings": {
+    "standard": "python3.12"
+  }
+}
+```
+
+### 4. Advanced C++ Example (Vector Operations)
 
 **Request:**
 ```json
@@ -166,7 +186,7 @@ The Judge Microservice API provides a complete code evaluation service that supp
 }
 ```
 
-### 4. Batch Evaluation Example
+### 5. Batch Evaluation Example
 
 **Request:**
 ```json
@@ -333,6 +353,13 @@ Compared to regular batch evaluation:
 - `cpp17` - C++17 standard
 - `cpp20` - C++20 standard
 - `cpp23` - C++23 standard
+
+### Python Language Standards
+- `python3.9` - Python 3.9
+- `python3.10` - Python 3.10
+- `python3.11` - Python 3.11
+- `python3.12` - Python 3.12 (default)
+- `python3.13` - Python 3.13
 
 ## Supported Parameter Types
 

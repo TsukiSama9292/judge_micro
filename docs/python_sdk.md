@@ -2,7 +2,7 @@
 
 ## Overview
 
-The Judge MicroService Python SDK provides a high-level interface for code evaluation, supporting both C and C++ programming languages with flexible configuration options and comprehensive result reporting.
+The Judge MicroService Python SDK provides a high-level interface for code evaluation, supporting C, C++, and Python programming languages with flexible configuration options and comprehensive result reporting.
 
 ## Installation and Setup
 
@@ -169,6 +169,62 @@ print(f"Compile time: {result.get('compile_execution_time', 0):.3f}s")
 print(f"Execution time: {result.get('test_execution_time', 0):.3f}s")
 ```
 
+### Python Language Evaluation
+
+```python
+from judge_micro.services.efficient import JudgeMicroservice
+
+judge = JudgeMicroservice()
+
+# Python code that processes data
+python_code = '''
+def solve(numbers: list, target: int) -> tuple:
+    """
+    Find and modify numbers in list based on target value
+    Returns (modified_numbers, sum_of_found, count)
+    """
+    found_sum = 0
+    count = 0
+    modified_numbers = []
+    
+    for num in numbers:
+        if num < target:
+            found_sum += num
+            count += 1
+            modified_numbers.append(num * 2)
+        else:
+            modified_numbers.append(num)
+    
+    return (modified_numbers, found_sum, count)
+'''
+
+config = {
+    "solve_params": [
+        {"name": "numbers", "type": "array_int", "input_value": [3, 1, 8, 2, 9]},
+        {"name": "target", "type": "int", "input_value": 5}
+    ],
+    "expected": {
+        "numbers": [6, 2, 8, 4, 9],  # Modified list
+        "target": 6,                  # Sum of found numbers (3+1+2)
+        "return_value": 3             # Count of numbers < target
+    },
+    "function_type": "int"
+}
+
+result = judge.run_microservice('python', python_code, config)
+print(f"Status: {result['status']}")
+
+# Python doesn't need compilation timeout, but execution timeout still applies
+result = judge.run_microservice(
+    'python', 
+    python_code, 
+    config,
+    execution_timeout=10    # Python execution timeout
+)
+print(f"Status: {result['status']}")
+print(f"Execution time: {result.get('test_execution_time', 0):.3f}s")
+```
+
 ## Advanced Features
 
 ### Timeout Control
@@ -270,6 +326,10 @@ class AdaptiveTimeoutJudge:
     
     def _estimate_compile_timeout(self, language: str, code: str) -> float:
         """Estimate compilation timeout based on code characteristics"""
+        # Python doesn't need compilation time
+        if language.startswith('python'):
+            return 5.0  # Minimal timeout for Python interpretation check
+        
         base_timeout = 30.0 if language == 'c' else 45.0  # C++ needs more time
         
         # Adjust based on code length and complexity

@@ -368,12 +368,12 @@ def solve(input_val: int, result: int) -> tuple:
 
 ## 📚 Documentation
 
-- **[API Design](docs/api_design.md)**: Complete API specification and data models
-- **[API Usage Guide](docs/api_usage.md)**: HTTP API usage examples and best practices
-- **[Python SDK Guide](docs/python_sdk.md)**: Comprehensive Python SDK documentation
-- **[C Language Examples](docker/c/README.md)**: C language evaluation examples and configurations
-- **[C++ Language Examples](docker/c++/README.md)**: C++ language evaluation examples and configurations
-- **[Python Language Examples](docker/python/README.md)**: Python language evaluation examples and configurations
+- **[API Design](https://github.com/TsukiSama9292/judge_micro/blob/main/docs/api_design.md)**: Complete API specification and data models
+- **[API Usage Guide](https://github.com/TsukiSama9292/judge_micro/blob/main/docs/api_usage.md)**: HTTP API usage examples and best practices
+- **[Python SDK Guide](https://github.com/TsukiSama9292/judge_micro/blob/main/docs/python_sdk.md)**: Comprehensive Python SDK documentation
+- **[C Language Examples](https://github.com/TsukiSama9292/judge_micro/blob/main/docker/c/README.md)**: C language evaluation examples and configurations
+- **[C++ Language Examples](https://github.com/TsukiSama9292/judge_micro/blob/main/docker/c++/README.md)**: C++ language evaluation examples and configurations
+- **[Python Language Examples](https://github.com/TsukiSama9292/judge_micro/blob/main/docker/python/README.md)**: Python language evaluation examples and configurations
 
 ## 🔧 Advanced Configuration
 

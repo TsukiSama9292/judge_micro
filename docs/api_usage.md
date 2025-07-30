@@ -83,7 +83,27 @@ curl -X POST "http://localhost:8000/judge/submit" \
   }'
 ```
 
-### 3. Using Python SDK
+### 3. Python Language Evaluation
+
+```bash
+curl -X POST "http://localhost:8000/judge/submit" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "language": "python",
+    "user_code": "def solve(a: int, b: int) -> tuple:\n    \"\"\"Test function that modifies parameters via tuple return\"\"\"\n    a = a * 2\n    b = b * 2 + 1\n    print(\"Hello from Python!\")\n    return (a, b, 0)",
+    "solve_params": [
+      {"name": "a", "type": "int", "input_value": 3},
+      {"name": "b", "type": "int", "input_value": 4}
+    ],
+    "expected": {"a": 6, "b": 9},
+    "function_type": "int",
+    "compiler_settings": {
+      "standard": "python3.12"
+    }
+  }'
+```
+
+### 4. Using Python SDK
 
 ```python
 from judge_micro.sdk.client import JudgeSDK, JudgeSDKHelper
@@ -106,13 +126,31 @@ int solve(int *a, int *b) {
     expected={"a": 6, "b": 9}
 )
 
-# 提交評測
+# Submit evaluation
 result = sdk.submit_code(request)
-print(f"評測結果: {result['status']}")
-print(f"結果匹配: {result['match']}")
+print(f"Evaluation result: {result['status']}")
+print(f"Result match: {result['match']}")
+
+# Create Python language request
+python_request = JudgeSDKHelper.create_python_request(
+    user_code='''def solve(a: int, b: int) -> tuple:
+    """Test function that modifies parameters via tuple return"""
+    a = a * 2
+    b = b * 2 + 1
+    return (a, b, 0)''',
+    params=[
+        {"name": "a", "type": "int", "value": 3},
+        {"name": "b", "type": "int", "value": 4}
+    ],
+    expected={"a": 6, "b": 9}
+)
+
+# Submit Python evaluation
+python_result = sdk.submit_code(python_request)
+print(f"Python evaluation result: {python_result['status']}")
 ```
 
-### 4. Optimized Batch Evaluation
+### 5. Optimized Batch Evaluation
 
 For testing the same code with multiple test configurations efficiently:
 
@@ -176,6 +214,12 @@ curl -X POST "http://localhost:8000/judge/batch/optimized" \
 - 預設標準: cpp17
 - 編譯器: G++
 - 特性: STL、模板、現代 C++ 特性
+
+### Python 語言
+- 版本: 3.9, 3.10, 3.11, 3.12, 3.13
+- 預設版本: 3.12
+- 解釋器: CPython
+- 特性: 類型提示、動態語言特性、豐富的標準庫
 
 ### 支援的數據類型
 - 基本類型: int, float, double, char, string
